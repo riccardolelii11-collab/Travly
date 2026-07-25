@@ -1,0 +1,186 @@
+import { CATS, T } from '../constants/translations';
+import { ComputedMetrics, Currency, Language, TripData } from '../types';
+
+export const NUM = (x: unknown): number => {
+  const n = parseFloat(String(x));
+  return isNaN(n) ? 0 : n;
+};
+
+export const esc = (s: unknown): string =>
+  String(s == null ? '' : s).replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c)
+  );
+
+export const fmt = (n: number, currency: Currency, lang: Language): string => {
+  const locale = lang === 'it' ? 'it-IT' : 'en-US';
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+      maximumFractionDigits: 0,
+    }).format(Math.round(n || 0));
+  } catch {
+    return Math.round(n || 0) + '';
+  }
+};
+
+export const pct = (x: number): string => Math.round((x || 0) * 100) + '%';
+
+export const fdate = (d: Date | string, lang: Language): string => {
+  const locale = lang === 'it' ? 'it-IT' : 'en-US';
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(dateObj);
+  } catch {
+    return dateObj.toISOString().slice(0, 10);
+  }
+};
+
+export const today = (): string => new Date().toISOString().slice(0, 10);
+
+export const med = (a: number[]): number => {
+  if (!a.length) return 0;
+  const s = a.slice().sort((x, y) => x - y);
+  const h = s.length >> 1;
+  return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2;
+};
+
+export const mAdd = (k: string, n: number): string => {
+  const [y, m] = k.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+};
+
+export const mRange = (a: string, b: string): string[] => {
+  const o: string[] = [];
+  let k = a;
+  let g = 0;
+  while (k <= b && g++ < 600) {
+    o.push(k);
+    k = mAdd(k, 1);
+  }
+  return o;
+};
+
+export const t = (k: string, lang: Language): string =>
+  (T[lang] || T.en)[k] || k;
+
+export const catName = (c: { key: string; name?: string }, lang: Language): string =>
+  c.name || (CATS.indexOf(c.key) >= 0 ? t('c_' + c.key, lang) : t('new_cat', lang));
+
+export const daysLeft = (departure: string): number | null => {
+  if (!departure) return null;
+  const d = new Date(departure);
+  if (isNaN(d.getTime())) return null;
+  const n = new Date();
+  n.setHours(0, 0, 0, 0);
+  return Math.ceil((d.getTime() - n.getTime()) / 864e5);
+};
+
+export function computeMetrics(state: TripData): ComputedMetrics {
+  const baseTotal = state.budget.reduce((a, c) => a + NUM(c.amount), 0);
+  const total = state.reserve ? baseTotal * 1.15 : baseTotal;
+  const saved = state.savings.reduce((a, s) => a + NUM(s.amount), 0);
+  const remaining = Math.max(0, total - saved);
+  const progress = total > 0 ? Math.min(saved / total, 1) : 0;
+  const days = daysLeft(state.departure);
+  const dpos = days == null ? null : Math.max(0, days);
+
+  const needMonth = dpos && dpos > 0 ? remaining / (dpos / 30.44) : remaining;
+  const needWeek = dpos && dpos > 0 ? remaining / (dpos / 7) : remaining;
+  const needDay = dpos && dpos > 0 ? remaining / dpos : remaining;
+
+  const dep = state.savings
+    .filter((s) => NUM(s.amount) > 0 && s.date)
+    .slice()
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  const amts = dep.map((s) => NUM(s.amount));
+  const isWind = (i: number) => {
+    const rest = amts.filter((_, j) => j !== i);
+    const m = med(rest);
+    return m > 0 && amts[i] > 3 * m;
+  };
+
+  const windfall = amts.filter((_, i) => isWind(i)).reduce((a, b) => a + b, 0);
+
+  let pace = 0;
+  let meanMonthly = 0;
+  let monthsTracked = 0;
+
+  if (dep.length) {
+    const nowK = today().slice(0, 7);
+    const lastC = mAdd(nowK, -1);
+    const firstK = dep[0].date.slice(0, 7);
+
+    if (firstK <= lastC) {
+      const months = mRange(firstK, lastC);
+      const rec: Record<string, number> = {};
+      months.forEach((k) => (rec[k] = 0));
+      dep.forEach((s, i) => {
+        const k = s.date.slice(0, 7);
+        if (!isWind(i) && rec[k] !== undefined) {
+          rec[k] += NUM(s.amount);
+        }
+      });
+      const vals = months.map((k) => rec[k]);
+      monthsTracked = months.length;
+      meanMonthly = vals.reduce((a, b) => a + b, 0) / vals.length;
+      pace = med(vals);
+      if (pace <= 0) pace = meanMonthly;
+    }
+  }
+
+  const provisional = monthsTracked < 3;
+  const monthsToFinish = pace > 0 ? remaining / pace : Infinity;
+
+  let proj: Date | null = null;
+  let status: 'ontrack' | 'behind' | 'done' | 'nodate' = 'nodate';
+
+  const depDate = state.departure ? new Date(state.departure + 'T00:00:00') : null;
+
+  if (!depDate || isNaN(depDate.getTime())) {
+    status = 'nodate';
+  } else if (remaining <= 0) {
+    status = 'done';
+  } else if (isFinite(monthsToFinish)) {
+    proj = new Date();
+    proj.setDate(proj.getDate() + Math.round(monthsToFinish * 30.44));
+    status = proj <= depDate ? 'ontrack' : 'behind';
+  } else {
+    status = 'behind';
+  }
+
+  return {
+    baseTotal,
+    total,
+    saved,
+    remaining,
+    progress,
+    days,
+    needMonth,
+    needWeek,
+    needDay,
+    pace,
+    meanMonthly,
+    windfall,
+    provisional,
+    monthsTracked,
+    proj,
+    status,
+  };
+}
+
+export function hexa(hex: string, a: number): string {
+  if (hex.indexOf('#') < 0) return hex;
+  const h = hex.replace('#', '');
+  return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(
+    h.slice(4, 6),
+    16
+  )},${a})`;
+}

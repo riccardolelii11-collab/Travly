@@ -1,0 +1,779 @@
+import React, { useState, useEffect, useTransition, useMemo } from 'react';
+import {
+  AppDatabase,
+  CategoryItem,
+  ContributorItem,
+  Currency,
+  DepositItem,
+  DepositMethod,
+  ExpenseItem,
+  Language,
+  Page,
+  Theme,
+  Trip,
+  TripData,
+} from './types';
+import {
+  CATS,
+  CURRENCIES,
+  getBlankData,
+  getExampleData,
+  RATES,
+} from './constants/translations';
+import { catName, computeMetrics, t, today } from './utils/calculations';
+import { SidebarRail } from './components/SidebarRail';
+import { HeaderTopbar } from './components/HeaderTopbar';
+import { OverviewPage } from './components/OverviewPage';
+import { BudgetPage } from './components/BudgetPage';
+import { SavingsPage } from './components/SavingsPage';
+import { TeamPage } from './components/TeamPage';
+import { TripExpensesPage } from './components/TripExpensesPage';
+import { WelcomeModal } from './components/WelcomeModal';
+import { CurrencyModal } from './components/CurrencyModal';
+import { TooltipBox } from './components/TooltipBox';
+import { SupabaseModal } from './components/SupabaseModal';
+import {
+  getSupabaseCredentials,
+  getSupabaseClient,
+  loadFromSupabase,
+  saveToSupabase,
+} from './utils/supabase';
+
+const STORAGE_KEY = 'travly_v2';
+const OLD_STORAGE_KEY = 'voyage_v1';
+
+const newId = () =>
+  't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
+function normalizeTripData(st: any): TripData {
+  if (!st || !st.budget) return getExampleData();
+  const page: Page =
+    ['overview', 'budget', 'savings', 'trip', 'team'].indexOf(st.page) >= 0
+      ? st.page
+      : 'overview';
+  const contributors =
+    Array.isArray(st.contributors) && st.contributors.length
+      ? st.contributors
+      : [{ name: 'Tu', share: '100' }];
+  const savings = Array.isArray(st.savings) ? st.savings : [];
+  const expenses = Array.isArray(st.expenses) ? st.expenses : [];
+  const currency: Currency =
+    RATES[st.currency as Currency] != null ? st.currency : 'EUR';
+
+  savings.forEach((s: any) => {
+    if (s.who == null) s.who = 0;
+  });
+
+  return {
+    page,
+    lang: st.lang || 'it',
+    currency,
+    theme: st.theme || 'light',
+    reserve: !!st.reserve,
+    destination: st.destination || '',
+    departure: st.departure || '',
+    tripLabel: st.tripLabel,
+    contributors,
+    budget: Array.isArray(st.budget) ? st.budget : CATS.map((key) => ({ key, amount: '' })),
+    savings,
+    expenses,
+  };
+}
+
+function loadInitialDatabase(): AppDatabase {
+  let db: any = null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) db = JSON.parse(raw);
+  } catch {}
+
+  if (!db || !Array.isArray(db.trips) || !db.trips.length) {
+    let old: any = null;
+    try {
+      const oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
+      if (oldRaw) old = JSON.parse(oldRaw);
+    } catch {}
+
+    const firstData = normalizeTripData(old && old.budget ? old : getExampleData());
+    db = {
+      v: 2,
+      activeId: 't1',
+      lang: firstData.lang || 'it',
+      theme: firstData.theme || 'light',
+      page: firstData.page || 'overview',
+      trips: [{ id: 't1', data: firstData }],
+    };
+  }
+
+  // Ensure active trip exists
+  let active = db.trips.find((x: any) => x.id === db.activeId);
+  if (!active) {
+    active = db.trips[0];
+    db.activeId = active.id;
+  }
+  active.data = normalizeTripData(active.data);
+
+  return db;
+}
+
+export default function App() {
+  const [db, setDb] = useState<AppDatabase>(loadInitialDatabase);
+  const [, startTransition] = useTransition();
+
+  // Active trip data reference
+  const activeTrip = db.trips.find((x) => x.id === db.activeId) || db.trips[0];
+  const state = activeTrip.data;
+
+  // Modals & UI states
+  const [welcomeOpen, setWelcomeOpen] = useState<boolean>(!db.seen);
+  const [supabaseOpen, setSupabaseOpen] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<
+    'idle' | 'syncing' | 'saved' | 'error' | 'unconfigured'
+  >('idle');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+
+  const [pendingCurrency, setPendingCurrency] = useState<{
+    from: Currency;
+    to: Currency;
+  } | null>(null);
+  const [activeTip, setActiveTip] = useState<{
+    text: string;
+    rect: DOMRect;
+  } | null>(null);
+
+  const isSupabaseConfigured = !!getSupabaseCredentials().url;
+
+  // Sync theme attribute to HTML root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', state.theme || 'light');
+    document.documentElement.lang = state.lang || 'it';
+  }, [state.theme, state.lang]);
+
+  // Initial load from Supabase if configured
+  useEffect(() => {
+    async function initSupabaseSync() {
+      if (!isSupabaseConfigured) {
+        setSyncStatus('unconfigured');
+        return;
+      }
+      try {
+        setSyncStatus('syncing');
+        const remoteDb = await loadFromSupabase();
+        if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
+          setDb(remoteDb);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteDb));
+          setLastSyncedAt(new Date());
+          setSyncStatus('saved');
+        } else {
+          setSyncStatus('idle');
+        }
+      } catch (err) {
+        console.warn('Initial Supabase sync error:', err);
+        setSyncStatus('error');
+      }
+    }
+    initSupabaseSync();
+  }, []);
+
+  // Persist to localStorage whenever database changes + sync to Supabase
+  const saveDb = (updated: AppDatabase) => {
+    setDb(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
+
+    // Debounced or direct push to Supabase if configured
+    if (getSupabaseClient()) {
+      setSyncStatus('syncing');
+      saveToSupabase(updated)
+        .then((ok) => {
+          if (ok) {
+            setSyncStatus('saved');
+            setLastSyncedAt(new Date());
+          } else {
+            setSyncStatus('error');
+          }
+        })
+        .catch(() => setSyncStatus('error'));
+    }
+  };
+
+  const handlePullFromSupabase = async () => {
+    setSyncStatus('syncing');
+    try {
+      const remoteDb = await loadFromSupabase();
+      if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
+        setDb(remoteDb);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteDb));
+        setLastSyncedAt(new Date());
+        setSyncStatus('saved');
+      } else {
+        setSyncStatus('idle');
+        alert(
+          state.lang === 'it'
+            ? 'Nessun dato trovato su Supabase'
+            : 'No data found on Supabase'
+        );
+      }
+    } catch (err: any) {
+      setSyncStatus('error');
+      alert(
+        (state.lang === 'it' ? 'Errore caricamento Supabase: ' : 'Supabase load error: ') +
+          (err.message || err)
+      );
+    }
+  };
+
+  const handlePushToSupabase = async () => {
+    setSyncStatus('syncing');
+    try {
+      const ok = await saveToSupabase(db);
+      if (ok) {
+        setSyncStatus('saved');
+        setLastSyncedAt(new Date());
+      } else {
+        setSyncStatus('error');
+      }
+    } catch (err: any) {
+      setSyncStatus('error');
+      alert(
+        (state.lang === 'it' ? 'Errore salvataggio Supabase: ' : 'Supabase save error: ') +
+          (err.message || err)
+      );
+    }
+  };
+
+  const updateActiveTripData = (updater: (prev: TripData) => TripData) => {
+    const nextData = updater(activeTrip.data);
+    const updatedTrips = db.trips.map((t) =>
+      t.id === db.activeId ? { ...t, data: nextData } : t
+    );
+    saveDb({
+      ...db,
+      lang: nextData.lang,
+      theme: nextData.theme,
+      page: nextData.page,
+      trips: updatedTrips,
+    });
+  };
+
+  // Computed Metrics
+  const metrics = useMemo(() => computeMetrics(state), [state]);
+
+  // Actions
+  const handleSelectPage = (page: Page) => {
+    updateActiveTripData((prev) => ({ ...prev, page }));
+  };
+
+  const handleToggleTheme = () => {
+    const newTheme: Theme = state.theme === 'dark' ? 'light' : 'dark';
+    updateActiveTripData((prev) => ({ ...prev, theme: newTheme }));
+  };
+
+  const handleSwitchTrip = (id: string) => {
+    const target = db.trips.find((x) => x.id === id);
+    if (!target) return;
+    saveDb({
+      ...db,
+      activeId: id,
+      page: target.data.page || 'overview',
+      lang: target.data.lang || db.lang,
+      theme: target.data.theme || db.theme,
+    });
+  };
+
+  const handleNewTrip = () => {
+    const newData = normalizeTripData(getBlankData(state));
+    const newTripObj: Trip = { id: newId(), data: newData };
+    const updated = {
+      ...db,
+      activeId: newTripObj.id,
+      trips: [...db.trips, newTripObj],
+    };
+    saveDb(updated);
+  };
+
+  const handleDuplicateTrip = () => {
+    const copyData = normalizeTripData(JSON.parse(JSON.stringify(state)));
+    copyData.destination =
+      (state.destination || t('untitled', state.lang)) +
+      ' (' +
+      t('copy_sfx', state.lang) +
+      ')';
+    const newTripObj: Trip = { id: newId(), data: copyData };
+    saveDb({
+      ...db,
+      activeId: newTripObj.id,
+      trips: [...db.trips, newTripObj],
+    });
+  };
+
+  const handleDeleteTrip = () => {
+    const nm = state.destination || t('untitled', state.lang);
+    if (
+      !confirm(
+        t('confirm_del_trip', state.lang).replace('{n}', nm)
+      )
+    )
+      return;
+
+    if (db.trips.length <= 1) {
+      const resetData = normalizeTripData(getBlankData(state));
+      saveDb({
+        ...db,
+        trips: [{ id: db.activeId, data: resetData }],
+      });
+      return;
+    }
+
+    const remainingTrips = db.trips.filter((x) => x.id !== db.activeId);
+    const nextActive = remainingTrips[0];
+    saveDb({
+      ...db,
+      activeId: nextActive.id,
+      trips: remainingTrips,
+    });
+  };
+
+  const handleRequestChangeCurrency = (to: Currency) => {
+    if (state.currency === to) return;
+    setPendingCurrency({ from: state.currency, to });
+  };
+
+  const handleConvertCurrency = (rate: number) => {
+    if (!pendingCurrency) return;
+    const m = (x: string) => {
+      if (x === '' || x == null) return x;
+      const n = parseFloat(x);
+      return isNaN(n) ? x : String(Math.round(n * rate * 100) / 100);
+    };
+
+    updateActiveTripData((prev) => ({
+      ...prev,
+      currency: pendingCurrency.to,
+      budget: prev.budget.map((c) => ({ ...c, amount: m(c.amount) })),
+      savings: prev.savings.map((s) => ({ ...s, amount: m(s.amount) })),
+      expenses: prev.expenses.map((e) => ({
+        ...e,
+        budgeted: m(e.budgeted),
+        actual: m(e.actual),
+      })),
+    }));
+    setPendingCurrency(null);
+  };
+
+  const handleRelabelCurrency = () => {
+    if (!pendingCurrency) return;
+    updateActiveTripData((prev) => ({
+      ...prev,
+      currency: pendingCurrency.to,
+    }));
+    setPendingCurrency(null);
+  };
+
+  const handleSelectLang = (lang: Language) => {
+    updateActiveTripData((prev) => ({ ...prev, lang }));
+    saveDb({ ...db, lang });
+  };
+
+  const handleSave = () => {
+    saveDb({ ...db });
+  };
+
+  const handleBackup = () => {
+    const blob = new Blob([JSON.stringify(db)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `travly-backup-${today()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestore = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        if (parsed && Array.isArray(parsed.trips) && parsed.trips.length) {
+          parsed.trips.forEach((x: any) => {
+            x.data = normalizeTripData(x.data);
+          });
+          if (!parsed.trips.find((x: any) => x.id === parsed.activeId)) {
+            parsed.activeId = parsed.trips[0].id;
+          }
+          saveDb(parsed);
+        } else if (parsed && parsed.budget) {
+          const singleData = normalizeTripData(parsed);
+          const singleId = newId();
+          saveDb({
+            ...db,
+            activeId: singleId,
+            trips: [...db.trips, { id: singleId, data: singleData }],
+          });
+        } else {
+          throw new Error('Invalid format');
+        }
+      } catch {
+        alert(
+          state.lang === 'en'
+            ? 'Invalid backup file'
+            : 'File di backup non valido'
+        );
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportCSV = () => {
+    const rows: string[][] = [['BUDGET'], ['Category', 'Amount']];
+    state.budget.forEach((b) =>
+      rows.push([catName(b, state.lang), b.amount])
+    );
+    rows.push([], ['SAVINGS'], ['Date', 'Amount', 'Method', 'Who', 'Note']);
+    state.savings.forEach((s) =>
+      rows.push([
+        s.date,
+        s.amount,
+        s.method,
+        (state.contributors[s.who || 0] || {}).name || '',
+        s.note,
+      ])
+    );
+    rows.push(
+      [],
+      ['EXPENSES'],
+      ['Date', 'Category', 'Description', 'Budgeted', 'Actual']
+    );
+    state.expenses.forEach((e) =>
+      rows.push([e.date, e.cat, e.desc, e.budgeted, e.actual])
+    );
+
+    const csvStr = rows
+      .map((r) =>
+        r
+          .map((c) => {
+            const v = c == null ? '' : String(c);
+            return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+          })
+          .join(',')
+      )
+      .join('\n');
+
+    const blob = new Blob([csvStr], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.destination || 'travly'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleLoadExample = () => {
+    const exData = normalizeTripData(getExampleData());
+    exData.lang = state.lang;
+    exData.currency = state.currency;
+    exData.theme = state.theme;
+    exData.page = state.page;
+    updateActiveTripData(() => exData);
+  };
+
+  const handleClear = () => {
+    if (confirm(t('confirm_clear', state.lang))) {
+      const blankData = normalizeTripData(getBlankData(state));
+      updateActiveTripData(() => blankData);
+    }
+  };
+
+  const handleStartMyTrip = () => {
+    const blankData = normalizeTripData(getBlankData(state));
+    saveDb({ ...db, hideCk: false, seen: true });
+    updateActiveTripData(() => blankData);
+    setWelcomeOpen(false);
+  };
+
+  const handleExploreDemo = () => {
+    saveDb({ ...db, seen: true });
+    setWelcomeOpen(false);
+  };
+
+  // Helper handlers for pages
+  const handleShowTip = (el: HTMLElement, text: string) => {
+    const rect = el.getBoundingClientRect();
+    if (activeTip && activeTip.text === text) {
+      setActiveTip(null);
+    } else {
+      setActiveTip({ text, rect });
+    }
+  };
+
+  return (
+    <div className="shell flex min-h-screen bg-[var(--bg)] text-[var(--ink)] font-sans antialiased transition-colors duration-300">
+      {/* Navigation Rail */}
+      <SidebarRail
+        activePage={state.page}
+        theme={state.theme}
+        lang={state.lang}
+        departure={state.departure}
+        onSelectPage={handleSelectPage}
+        onToggleTheme={handleToggleTheme}
+      />
+
+      {/* Main Content Area */}
+      <main className="main flex-1 min-w-0 p-[24px_40px_72px] max-lg:p-[18px_16px_56px]">
+        <HeaderTopbar
+          trips={db.trips}
+          activeId={db.activeId}
+          tripLabel={
+            state.tripLabel == null ? t('trip_to', state.lang) : state.tripLabel
+          }
+          destination={state.destination}
+          departure={state.departure}
+          currency={state.currency}
+          lang={state.lang}
+          onSwitchTrip={handleSwitchTrip}
+          onNewTrip={handleNewTrip}
+          onUpdateTripLabel={(val) =>
+            updateActiveTripData((prev) => ({ ...prev, tripLabel: val }))
+          }
+          onUpdateDestination={(val) =>
+            updateActiveTripData((prev) => ({ ...prev, destination: val }))
+          }
+          onUpdateDeparture={(val) =>
+            updateActiveTripData((prev) => ({ ...prev, departure: val }))
+          }
+          onRequestChangeCurrency={handleRequestChangeCurrency}
+          onSelectLang={handleSelectLang}
+          onSave={handleSave}
+          onDuplicateTrip={handleDuplicateTrip}
+          onDeleteTrip={handleDeleteTrip}
+          onBackup={handleBackup}
+          onRestore={handleRestore}
+          onExportCSV={handleExportCSV}
+          onPrint={handlePrint}
+          onLoadExample={handleLoadExample}
+          onHelp={() => setWelcomeOpen(true)}
+          onClear={handleClear}
+          onOpenSupabase={() => setSupabaseOpen(true)}
+          isSupabaseConfigured={isSupabaseConfigured}
+        />
+
+        {/* Page Render */}
+        <div id="pages" className="animate-[rise_0.4s_ease_both]">
+          {state.page === 'overview' && (
+            <OverviewPage
+              state={state}
+              metrics={metrics}
+              hideChecklist={!!db.hideCk}
+              onHideChecklist={() => saveDb({ ...db, hideCk: true })}
+              onNavigatePage={handleSelectPage}
+              onShowTip={handleShowTip}
+              onFocusDestination={() => {
+                const el = document.getElementById(
+                  'destInput'
+                ) as HTMLInputElement;
+                if (el) {
+                  el.focus();
+                  el.select();
+                }
+              }}
+            />
+          )}
+
+          {state.page === 'budget' && (
+            <BudgetPage
+              state={state}
+              metrics={metrics}
+              onUpdateCategoryName={(idx, name) =>
+                updateActiveTripData((prev) => {
+                  const budget = [...prev.budget];
+                  budget[idx] = { ...budget[idx], name };
+                  return { ...prev, budget };
+                })
+              }
+              onUpdateCategoryAmount={(idx, amount) =>
+                updateActiveTripData((prev) => {
+                  const budget = [...prev.budget];
+                  budget[idx] = { ...budget[idx], amount };
+                  return { ...prev, budget };
+                })
+              }
+              onDeleteCategory={(idx) =>
+                updateActiveTripData((prev) => {
+                  const budget = [...prev.budget];
+                  budget.splice(idx, 1);
+                  return { ...prev, budget };
+                })
+              }
+              onAddCategory={() =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  budget: [
+                    ...prev.budget,
+                    {
+                      key: 'cx' + Date.now().toString(36),
+                      name: '',
+                      amount: '',
+                    },
+                  ],
+                }))
+              }
+              onToggleReserve={() =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  reserve: !prev.reserve,
+                }))
+              }
+              onShowTip={handleShowTip}
+            />
+          )}
+
+          {state.page === 'savings' && (
+            <SavingsPage
+              state={state}
+              metrics={metrics}
+              onUpdateDeposit={(idx, field, val) =>
+                updateActiveTripData((prev) => {
+                  const savings = [...prev.savings];
+                  savings[idx] = { ...savings[idx], [field]: val };
+                  return { ...prev, savings };
+                })
+              }
+              onDeleteDeposit={(idx) =>
+                updateActiveTripData((prev) => {
+                  const savings = [...prev.savings];
+                  savings.splice(idx, 1);
+                  return { ...prev, savings };
+                })
+              }
+              onAddDeposit={() =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  savings: [
+                    ...prev.savings,
+                    {
+                      date: today(),
+                      amount: '',
+                      method: 'auto',
+                      note: '',
+                      who: 0,
+                    },
+                  ],
+                }))
+              }
+              onShowTip={handleShowTip}
+            />
+          )}
+
+          {state.page === 'team' && (
+            <TeamPage
+              state={state}
+              metrics={metrics}
+              onUpdateContributor={(idx, field, val) =>
+                updateActiveTripData((prev) => {
+                  const contributors = [...prev.contributors];
+                  contributors[idx] = { ...contributors[idx], [field]: val };
+                  return { ...prev, contributors };
+                })
+              }
+              onDeleteContributor={(idx) =>
+                updateActiveTripData((prev) => {
+                  if (prev.contributors.length <= 1) return prev;
+                  const contributors = [...prev.contributors];
+                  contributors.splice(idx, 1);
+                  const savings = prev.savings.map((s) => {
+                    const w = s.who || 0;
+                    if (w === idx) return { ...s, who: 0 };
+                    if (w > idx) return { ...s, who: w - 1 };
+                    return s;
+                  });
+                  return { ...prev, contributors, savings };
+                })
+              }
+              onAddContributor={() =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  contributors: [
+                    ...prev.contributors,
+                    { name: '', share: '0' },
+                  ],
+                }))
+              }
+              onShowTip={handleShowTip}
+            />
+          )}
+
+          {state.page === 'trip' && (
+            <TripExpensesPage
+              state={state}
+              metrics={metrics}
+              onUpdateExpense={(idx, field, val) =>
+                updateActiveTripData((prev) => {
+                  const expenses = [...prev.expenses];
+                  expenses[idx] = { ...expenses[idx], [field]: val };
+                  return { ...prev, expenses };
+                })
+              }
+              onDeleteExpense={(idx) =>
+                updateActiveTripData((prev) => {
+                  const expenses = [...prev.expenses];
+                  expenses.splice(idx, 1);
+                  return { ...prev, expenses };
+                })
+              }
+              onAddExpense={() =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  expenses: [
+                    ...prev.expenses,
+                    {
+                      date: today(),
+                      cat: 'food',
+                      desc: '',
+                      budgeted: '',
+                      actual: '',
+                    },
+                  ],
+                }))
+              }
+            />
+          )}
+        </div>
+      </main>
+
+      {/* Modals & Overlay Tooltips */}
+      <WelcomeModal
+        isOpen={welcomeOpen}
+        lang={state.lang}
+        onStartMyTrip={handleStartMyTrip}
+        onExploreDemo={handleExploreDemo}
+      />
+
+      <CurrencyModal
+        pendingCurrency={pendingCurrency}
+        lang={state.lang}
+        onConvert={handleConvertCurrency}
+        onRelabel={handleRelabelCurrency}
+        onCancel={() => setPendingCurrency(null)}
+      />
+
+      <SupabaseModal
+        isOpen={supabaseOpen}
+        lang={state.lang}
+        onClose={() => setSupabaseOpen(false)}
+        onPullData={handlePullFromSupabase}
+        onPushData={handlePushToSupabase}
+        syncStatus={syncStatus}
+        lastSyncedAt={lastSyncedAt}
+      />
+
+      <TooltipBox activeTip={activeTip} onClose={() => setActiveTip(null)} />
+    </div>
+  );
+}

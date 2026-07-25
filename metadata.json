@@ -1,0 +1,6 @@
+{
+  "name": "Travly",
+  "description": "Pianificatore di budget e risparmi per i tuoi viaggi. Calcola il ritmo mensile per partire in tempo, gestisci spese di gruppo e monitora i tuoi risparmi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

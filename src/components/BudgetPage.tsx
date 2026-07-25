@@ -1,0 +1,178 @@
+import React from 'react';
+import { CategoryItem, ComputedMetrics, TripData } from '../types';
+import { CATS, COLORS } from '../constants/translations';
+import { catName, fmt, NUM, pct, t } from '../utils/calculations';
+
+interface BudgetPageProps {
+  state: TripData;
+  metrics: ComputedMetrics;
+  onUpdateCategoryName: (index: number, val: string) => void;
+  onUpdateCategoryAmount: (index: number, val: string) => void;
+  onDeleteCategory: (index: number) => void;
+  onAddCategory: () => void;
+  onToggleReserve: () => void;
+  onShowTip: (el: HTMLElement, tipText: string) => void;
+}
+
+export const BudgetPage: React.FC<BudgetPageProps> = ({
+  state,
+  metrics: d,
+  onUpdateCategoryName,
+  onUpdateCategoryAmount,
+  onDeleteCategory,
+  onAddCategory,
+  onToggleReserve,
+  onShowTip,
+}) => {
+  const lang = state.lang;
+  const currency = state.currency;
+
+  return (
+    <div className="space-y-5">
+      <div className="sec-head flex items-center justify-between gap-3 mb-3.5">
+        <div>
+          <h2 className="text-[17px] font-extrabold tracking-tight">
+            {t('budget_title', lang)}
+          </h2>
+          <div className="hint text-[13px] text-[var(--sub)] leading-snug">
+            {t('budget_sub', lang)}
+          </div>
+        </div>
+      </div>
+
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
+        <table className="tbl w-full border-collapse">
+          <thead>
+            <tr className="border-b border-[var(--hair)]">
+              <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
+                {t('col_cat', lang)}
+              </th>
+              <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
+                {t('col_amt', lang)}
+              </th>
+              <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
+                {t('col_share', lang)}
+              </th>
+              <th className="pb-[10px] px-[10px]" />
+            </tr>
+          </thead>
+          <tbody>
+            {state.budget.map((c, i) => {
+              const amt = NUM(c.amount);
+              const frac = d.baseTotal > 0 ? amt / d.baseTotal : 0;
+              const col = COLORS[i % COLORS.length];
+
+              return (
+                <tr key={c.key || i} className="border-b border-[var(--hair)]">
+                  <td className="py-[9px] px-[10px]">
+                    <div className="cat-cell flex items-center gap-0">
+                      <span
+                        className="cat-dot w-[9px] h-[9px] rounded-[3px] inline-block mr-[9px] align-middle flex-none"
+                        style={{ background: col }}
+                      />
+                      <input
+                        className="cat-name flex-1 min-w-0 max-w-[220px] border border-transparent bg-transparent rounded-lg p-[6px_8px] text-[14px] font-semibold text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none transition-colors"
+                        value={c.name || ''}
+                        onChange={(e) => onUpdateCategoryName(i, e.target.value)}
+                        placeholder={
+                          CATS.indexOf(c.key) >= 0
+                            ? t('c_' + c.key, lang)
+                            : t('new_cat', lang)
+                        }
+                      />
+                    </div>
+                  </td>
+                  <td className="py-[9px] px-[10px] text-right">
+                    <input
+                      className="amt num w-full text-right font-mono font-bold border border-transparent bg-transparent rounded-lg p-[7px_8px] text-[14px] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none transition-colors"
+                      inputMode="decimal"
+                      value={c.amount}
+                      onChange={(e) => onUpdateCategoryAmount(i, e.target.value)}
+                      placeholder="0"
+                    />
+                  </td>
+                  <td className="py-[9px] px-[10px] text-right">
+                    <div className="flex items-center gap-[10px] justify-end">
+                      <div className="bar h-[6px] rounded-full bg-[var(--hair)] overflow-hidden flex-1 max-w-[120px] min-w-[60px]">
+                        <span
+                          className="block h-full rounded-full transition-all"
+                          style={{
+                            width: `${(frac * 100).toFixed(1)}%`,
+                            background: col,
+                          }}
+                        />
+                      </div>
+                      <span className="num font-mono font-bold text-[var(--sub)] min-w-[38px]">
+                        {pct(frac)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-[9px] px-[10px] text-right">
+                    <button
+                      onClick={() => onDeleteCategory(i)}
+                      className="del border-none bg-transparent text-[var(--muted)] text-[16px] w-[30px] h-[30px] rounded-lg hover:bg-[rgba(214,72,59,0.1)] hover:text-[var(--red)] cursor-pointer transition-colors"
+                      title="Elimina"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <button
+          onClick={onAddCategory}
+          className="add-row inline-flex items-center gap-[8px] border border-dashed border-[var(--line)] bg-transparent text-[var(--horizon-deep)] rounded-[11px] p-[10px_16px] text-[13.5px] font-bold mt-[14px] hover:border-[var(--horizon)] hover:bg-[var(--soft)] cursor-pointer transition-colors"
+        >
+          ＋ {t('add_cat', lang)}
+        </button>
+
+        {/* Contingency Reserve Toggle */}
+        <div className="toggle-row flex items-center justify-between gap-[14px] bg-[var(--soft)] border border-[var(--hair)] rounded-[14px] p-[14px_18px] mt-[16px]">
+          <div>
+            <div className="tt text-[14px] font-bold flex items-center gap-1.5">
+              <span>{t('reserve_t', lang)}</span>
+              <button
+                onClick={(e) =>
+                  onShowTip(e.currentTarget, t('tip_reserve', lang))
+                }
+                className="info border border-[var(--line)] bg-[var(--card)] text-[var(--sub)] w-[16px] h-[16px] rounded-full flex-none grid place-items-center text-[10px] font-extrabold cursor-pointer hover:border-[var(--horizon)] hover:text-[var(--horizon-deep)]"
+                aria-label="?"
+              >
+                ?
+              </button>
+            </div>
+            <div className="ts text-[12px] text-[var(--sub)] mt-[2px]">
+              {t('reserve_s', lang)}
+            </div>
+          </div>
+
+          <button
+            onClick={onToggleReserve}
+            className={`tg w-[48px] h-[27px] rounded-full border-none relative flex-none transition-colors duration-200 cursor-pointer ${
+              state.reserve ? 'bg-[#12B5A5]' : 'bg-[var(--line)]'
+            }`}
+          >
+            <span
+              className={`knob absolute top-[3px] w-[21px] h-[21px] rounded-full bg-white shadow-md transition-all duration-200 ${
+                state.reserve ? 'left-[24px]' : 'left-[3px]'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Total Cost Summary */}
+        <div className="tfoot flex justify-between items-center mt-[16px] pt-[16px] border-t-2 border-[var(--hair)]">
+          <div className="lab text-[13px] font-bold text-[var(--sub)]">
+            {t('total', lang)}
+          </div>
+          <div className="tot num text-[24px] font-bold font-mono tracking-tight">
+            {fmt(d.total, currency, lang)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
