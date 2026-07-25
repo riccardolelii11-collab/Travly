@@ -94,20 +94,26 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
       setTestResult(null);
       setLoginMessage(null);
 
-      if (accountName || stored.account) {
-        loadBackupsList(accountName || stored.account);
+      if (accountName) {
+        loadBackupsList(accountName);
+      } else {
+        setBackups([]);
       }
     }
   }, [isOpen, accountName]);
 
   const loadBackupsList = async (accKey: string) => {
-    if (!accKey) return;
+    if (!accKey.trim()) {
+      setBackups([]);
+      return;
+    }
     setLoadingBackups(true);
     try {
-      const list = await fetchBackupSnapshots(accKey);
+      const list = await fetchBackupSnapshots(accKey.trim());
       setBackups(list);
     } catch (err) {
       console.warn('Error loading backup snapshots:', err);
+      setBackups([]);
     } finally {
       setLoadingBackups(false);
     }
@@ -131,9 +137,21 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     }
   };
 
+  const handleLogoutClick = () => {
+    onLogoutAccount();
+    setBackups([]);
+    setInputAccount('');
+    setInputPass('');
+    setLoginMessage(null);
+  };
+
   const handleCreateNewBackup = async () => {
+    const accKey = accountName.trim();
+    if (!accKey) {
+      setLoginMessage(isIt ? 'Devi prima accedere con il tuo account per salvare un backup!' : 'Log in first to save a backup!');
+      return;
+    }
     setCreatingBackup(true);
-    const accKey = accountName || inputAccount || 'main';
     try {
       await createBackupSnapshot(accKey, db, backupLabel.trim());
       setBackupLabel('');
@@ -158,7 +176,8 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   };
 
   const handleDeleteSnap = async (id: string) => {
-    const accKey = accountName || inputAccount || 'main';
+    const accKey = accountName.trim();
+    if (!accKey) return;
     if (window.confirm(isIt ? 'Eliminare questo backup?' : 'Delete this backup snapshot?')) {
       await deleteBackupSnapshot(id, accKey);
       setBackups((prev) => prev.filter((b) => b.id !== id));
@@ -285,7 +304,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
                 </div>
               </div>
               <button
-                onClick={onLogoutAccount}
+                onClick={handleLogoutClick}
                 className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[12px] font-bold flex items-center gap-1.5 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />

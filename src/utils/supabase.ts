@@ -207,8 +207,10 @@ export async function saveToSupabase(db: AppDatabase, accountKey: string = 'main
 
 // Backup Snapshots Management
 export function getLocalBackups(accountKey: string): BackupSnapshot[] {
+  const key = accountKey.trim().toLowerCase();
+  if (!key) return [];
   try {
-    const raw = localStorage.getItem(`${LOCAL_BACKUPS_KEY}_${accountKey}`);
+    const raw = localStorage.getItem(`${LOCAL_BACKUPS_KEY}_${key}`);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -217,10 +219,12 @@ export function getLocalBackups(accountKey: string): BackupSnapshot[] {
 }
 
 export function saveLocalBackup(accountKey: string, db: AppDatabase, label: string): BackupSnapshot {
-  const backups = getLocalBackups(accountKey);
+  const key = accountKey.trim().toLowerCase();
+  if (!key) throw new Error('Account key is required to save local backup');
+  const backups = getLocalBackups(key);
   const newSnapshot: BackupSnapshot = {
     id: 'backup_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-    userAccount: accountKey,
+    userAccount: key,
     label: label || `Backup ${new Date().toLocaleString()}`,
     createdAt: new Date().toISOString(),
     tripCount: db.trips?.length || 0,
@@ -228,14 +232,15 @@ export function saveLocalBackup(accountKey: string, db: AppDatabase, label: stri
   };
 
   const updated = [newSnapshot, ...backups].slice(0, 20); // Keep last 20 backups
-  localStorage.setItem(`${LOCAL_BACKUPS_KEY}_${accountKey}`, JSON.stringify(updated));
+  localStorage.setItem(`${LOCAL_BACKUPS_KEY}_${key}`, JSON.stringify(updated));
   return newSnapshot;
 }
 
 export async function fetchBackupSnapshots(accountKey: string): Promise<BackupSnapshot[]> {
-  const supabase = getSupabaseClient();
-  const key = accountKey.trim().toLowerCase() || 'main';
+  const key = accountKey.trim().toLowerCase();
+  if (!key) return [];
 
+  const supabase = getSupabaseClient();
   const localList = getLocalBackups(key);
 
   if (!supabase) {
@@ -281,7 +286,10 @@ export async function createBackupSnapshot(
   db: AppDatabase,
   label?: string
 ): Promise<{ success: boolean; snapshot: BackupSnapshot }> {
-  const key = accountKey.trim().toLowerCase() || 'main';
+  const key = accountKey.trim().toLowerCase();
+  if (!key) {
+    throw new Error('Account key is required');
+  }
   const snapshotLabel = label || `Backup ${new Date().toLocaleString()}`;
 
   const localSnap = saveLocalBackup(key, db, snapshotLabel);
@@ -311,7 +319,8 @@ export async function createBackupSnapshot(
 }
 
 export async function deleteBackupSnapshot(id: string, accountKey: string): Promise<boolean> {
-  const key = accountKey.trim().toLowerCase() || 'main';
+  const key = accountKey.trim().toLowerCase();
+  if (!key) return false;
 
   // Remove from local
   const localList = getLocalBackups(key).filter((b) => b.id !== id);
