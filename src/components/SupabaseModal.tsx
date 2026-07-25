@@ -1,51 +1,169 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Check, Copy, RefreshCw, Server, AlertCircle, ExternalLink, ShieldCheck } from 'lucide-react';
-import { Language } from '../types';
+import {
+  Database,
+  Check,
+  Copy,
+  RefreshCw,
+  Server,
+  AlertCircle,
+  ExternalLink,
+  ShieldCheck,
+  User,
+  Key,
+  Download,
+  Trash2,
+  PlusCircle,
+  LogOut,
+  ChevronDown,
+  ChevronUp,
+  History,
+} from 'lucide-react';
+import { Language, AppDatabase } from '../types';
 import {
   getSupabaseCredentials,
   saveSupabaseCredentials,
   getSupabaseClient,
   SUPABASE_SQL_SCRIPT,
-  loadFromSupabase,
-  saveToSupabase,
+  getStoredUserAccount,
+  saveStoredUserAccount,
+  clearStoredUserAccount,
+  fetchBackupSnapshots,
+  createBackupSnapshot,
+  deleteBackupSnapshot,
+  BackupSnapshot,
 } from '../utils/supabase';
 
 interface SupabaseModalProps {
   isOpen: boolean;
   lang: Language;
   onClose: () => void;
-  onPullData: () => Promise<void>;
-  onPushData: () => Promise<void>;
+  db: AppDatabase;
+  onRestoreDatabase: (newDb: AppDatabase) => void;
+  onPushCurrentData: () => Promise<void>;
   syncStatus: 'idle' | 'syncing' | 'saved' | 'error' | 'unconfigured';
   lastSyncedAt: Date | null;
+  accountName: string;
+  onLoginAccount: (account: string, pass: string) => Promise<void>;
+  onLogoutAccount: () => void;
 }
 
 export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   isOpen,
   lang,
   onClose,
-  onPullData,
-  onPushData,
+  db,
+  onRestoreDatabase,
+  onPushCurrentData,
   syncStatus,
   lastSyncedAt,
+  accountName,
+  onLoginAccount,
+  onLogoutAccount,
 }) => {
   const [url, setUrl] = useState('');
   const [anonKey, setAnonKey] = useState('');
   const [copiedSql, setCopiedSql] = useState(false);
-  const [showSql, setShowSql] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   const [testResult, setTestResult] = useState<{ success?: boolean; message?: string } | null>(null);
   const [testing, setTesting] = useState(false);
+
+  // Login form state
+  const [inputAccount, setInputAccount] = useState('');
+  const [inputPass, setInputPass] = useState('');
+  const [loginMessage, setLoginMessage] = useState<string | null>(null);
+
+  // Backups history state
+  const [backups, setBackups] = useState<BackupSnapshot[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
+  const [backupLabel, setBackupLabel] = useState('');
+  const [creatingBackup, setCreatingBackup] = useState(false);
+
+  const isIt = lang === 'it';
+  const isLoggedIn = !!accountName;
 
   useEffect(() => {
     if (isOpen) {
       const creds = getSupabaseCredentials();
       setUrl(creds.url);
       setAnonKey(creds.anonKey);
+
+      const stored = getStoredUserAccount();
+      setInputAccount(stored.account || accountName || '');
+      setInputPass(stored.pass || '');
+
       setTestResult(null);
+      setLoginMessage(null);
+
+      if (accountName || stored.account) {
+        loadBackupsList(accountName || stored.account);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, accountName]);
+
+  const loadBackupsList = async (accKey: string) => {
+    if (!accKey) return;
+    setLoadingBackups(true);
+    try {
+      const list = await fetchBackupSnapshots(accKey);
+      setBackups(list);
+    } catch (err) {
+      console.warn('Error loading backup snapshots:', err);
+    } finally {
+      setLoadingBackups(false);
+    }
+  };
 
   if (!isOpen) return null;
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputAccount.trim()) {
+      setLoginMessage(isIt ? 'Inserisci un nome account' : 'Please enter an account name');
+      return;
+    }
+    setLoginMessage(null);
+    try {
+      await onLoginAccount(inputAccount.trim(), inputPass.trim());
+      await loadBackupsList(inputAccount.trim());
+      setLoginMessage(isIt ? 'Accesso effettuato con successo!' : 'Logged in successfully!');
+    } catch (err: any) {
+      setLoginMessage(err?.message || (isIt ? 'Errore durante il login' : 'Login error'));
+    }
+  };
+
+  const handleCreateNewBackup = async () => {
+    setCreatingBackup(true);
+    const accKey = accountName || inputAccount || 'main';
+    try {
+      await createBackupSnapshot(accKey, db, backupLabel.trim());
+      setBackupLabel('');
+      await loadBackupsList(accKey);
+      await onPushCurrentData();
+    } catch (err) {
+      console.error('Backup creation failed:', err);
+    } finally {
+      setCreatingBackup(false);
+    }
+  };
+
+  const handleRestore = (snap: BackupSnapshot) => {
+    const confirmMsg = isIt
+      ? `Vuoi ripristinare il backup "${snap.label}" creato il ${new Date(snap.createdAt).toLocaleString()}?\nEventuali modifiche non salvate verranno sostituite.`
+      : `Do you want to restore backup "${snap.label}" from ${new Date(snap.createdAt).toLocaleString()}?`;
+
+    if (window.confirm(confirmMsg)) {
+      onRestoreDatabase(snap.data);
+      onClose();
+    }
+  };
+
+  const handleDeleteSnap = async (id: string) => {
+    const accKey = accountName || inputAccount || 'main';
+    if (window.confirm(isIt ? 'Eliminare questo backup?' : 'Delete this backup snapshot?')) {
+      await deleteBackupSnapshot(id, accKey);
+      setBackups((prev) => prev.filter((b) => b.id !== id));
+    }
+  };
 
   const handleSaveCredentials = async () => {
     saveSupabaseCredentials(url, anonKey);
@@ -57,8 +175,8 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
       setTesting(false);
       setTestResult({
         success: false,
-        message: lang === 'it' 
-          ? 'Inserisci sia l\'URL che la chiave Anon di Supabase' 
+        message: isIt
+          ? "Inserisci sia l'URL che la chiave Anon di Supabase"
           : 'Please enter both Supabase URL and Anon Key',
       });
       return;
@@ -71,7 +189,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
         if (error.code === '42P01' || error.message.includes('relation "travly_db" does not exist')) {
           setTestResult({
             success: false,
-            message: lang === 'it'
+            message: isIt
               ? 'Connessione a Supabase riuscita! Nota: la tabella "travly_db" non esiste ancora. Esegui lo script SQL qui sotto.'
               : 'Connected to Supabase! Note: Table "travly_db" does not exist yet. Please run the SQL script below.',
           });
@@ -84,7 +202,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
       } else {
         setTestResult({
           success: true,
-          message: lang === 'it'
+          message: isIt
             ? 'Connesso a Supabase con successo! La tabella travly_db è pronta.'
             : 'Successfully connected to Supabase! Table travly_db is ready.',
         });
@@ -104,15 +222,13 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setTimeout(() => setCopiedSql(false), 2500);
   };
 
-  const isIt = lang === 'it';
-
   return (
     <div
       className="fixed inset-0 bg-[#0B1B3A]/60 backdrop-blur-xs grid place-items-center z-[120] p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-[var(--card)] border border-[var(--line)] rounded-[20px] shadow-2xl p-6 max-w-[560px] w-full text-[var(--ink)] my-auto transition-all"
+        className="bg-[var(--card)] border border-[var(--line)] rounded-[22px] shadow-2xl p-6 max-w-[620px] w-full text-[var(--ink)] my-auto transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -123,181 +239,214 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
             </div>
             <div>
               <h3 className="text-[18px] font-black tracking-tight flex items-center gap-2">
-                {isIt ? 'Database Supabase' : 'Supabase Database'}
+                {isIt ? 'Backup & Sync Cloud Supabase' : 'Supabase Backup & Cloud Sync'}
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#3ECF8E]/15 text-[#3ECF8E] border border-[#3ECF8E]/30">
                   Cloud Storage
                 </span>
               </h3>
               <p className="text-[12.5px] text-[var(--sub)]">
                 {isIt
-                  ? 'Salva i tuoi viaggi e dati in tempo reale su Supabase Cloud'
-                  : 'Persist your trips and budget data in real-time on Supabase Cloud'}
+                  ? 'Salva, gestisci e ripristina i tuoi backup da qualsiasi dispositivo'
+                  : 'Save, manage and restore your trip backups across devices'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-[var(--sub)] hover:text-[var(--ink)] p-1 rounded-lg hover:bg-[var(--soft)] cursor-pointer"
+            className="text-[var(--sub)] hover:text-[var(--ink)] p-1.5 rounded-lg hover:bg-[var(--soft)] cursor-pointer text-[16px]"
           >
             ✕
           </button>
         </div>
 
-        {/* Sync Status Banner */}
-        <div className="mt-4 p-3.5 rounded-[12px] bg-[var(--soft)] border border-[var(--hair)] flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <Server className="w-4 h-4 text-[var(--sub)]" />
-              <span
-                className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${
-                  syncStatus === 'saved' || syncStatus === 'idle'
-                    ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                    : syncStatus === 'syncing'
-                    ? 'bg-amber-400 animate-ping'
-                    : 'bg-rose-500'
-                }`}
-              />
+        {/* User Account Login Card */}
+        <div className="mt-4 p-4 rounded-[14px] bg-[var(--soft)] border border-[var(--line)]">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-[14px] font-extrabold text-[var(--ink)]">
+              <User className="w-4 h-4 text-[#3ECF8E]" />
+              <span>{isIt ? 'Account Cliente / Login' : 'Client Account / Login'}</span>
             </div>
-            <div>
-              <div className="text-[13px] font-bold">
-                {syncStatus === 'saved' || syncStatus === 'idle'
-                  ? isIt ? 'Stato: Sincronizzato con Cloud' : 'Status: Synced with Cloud'
-                  : syncStatus === 'syncing'
-                  ? isIt ? 'Stato: Sincronizzazione in corso...' : 'Status: Syncing...'
-                  : syncStatus === 'error'
-                  ? isIt ? 'Stato: Errore di sincronizzazione' : 'Status: Sync error'
-                  : isIt ? 'Stato: Non configurato' : 'Status: Unconfigured'}
+            {isLoggedIn && (
+              <span className="text-[11.5px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                {isIt ? 'Loggato' : 'Logged in'}
+              </span>
+            )}
+          </div>
+
+          {isLoggedIn ? (
+            <div className="flex items-center justify-between bg-[var(--card)] p-3 rounded-[10px] border border-[var(--line)]">
+              <div>
+                <div className="text-[13px] font-extrabold text-[var(--ink)]">
+                  👤 {accountName}
+                </div>
+                <div className="text-[11.5px] text-[var(--sub)] mt-0.5">
+                  {isIt ? 'I tuoi viaggi vengono salvati automaticamente su questo account' : 'Your trips are saved automatically to this account'}
+                </div>
               </div>
-              {lastSyncedAt && (
-                <div className="text-[11px] text-[var(--sub)]">
-                  {isIt ? 'Ultimo salvataggio: ' : 'Last saved: '}
-                  {lastSyncedAt.toLocaleTimeString()}
+              <button
+                onClick={onLogoutAccount}
+                className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[12px] font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{isIt ? 'Disconnetti' : 'Logout'}</span>
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleLoginSubmit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11.5px] font-bold text-[var(--sub)] mb-1">
+                    {isIt ? 'Nome Account / Email / ID' : 'Account Name / ID'}
+                  </label>
+                  <div className="relative">
+                    <User className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--sub)]" />
+                    <input
+                      type="text"
+                      placeholder="es. riccardo_viaggi"
+                      value={inputAccount}
+                      onChange={(e) => setInputAccount(e.target.value)}
+                      className="w-full bg-[var(--card)] border border-[var(--line)] rounded-[9px] pl-8 pr-3 py-2 text-[13px] font-medium outline-none focus:border-[#3ECF8E]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11.5px] font-bold text-[var(--sub)] mb-1">
+                    {isIt ? 'Password / Key Sicurezza' : 'Password / Security Key'}
+                  </label>
+                  <div className="relative">
+                    <Key className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--sub)]" />
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={inputPass}
+                      onChange={(e) => setInputPass(e.target.value)}
+                      className="w-full bg-[var(--card)] border border-[var(--line)] rounded-[9px] pl-8 pr-3 py-2 text-[13px] font-medium outline-none focus:border-[#3ECF8E]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-[11px] text-[var(--sub)]">
+                  {isIt
+                    ? 'Inserisci il tuo account per accedere ai tuoi dati da qualsiasi PC.'
+                    : 'Log in to access your saved trips from any computer.'}
+                </p>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#3ECF8E] text-[#052316] text-[12.5px] font-extrabold rounded-[9px] hover:brightness-105 cursor-pointer shrink-0"
+                >
+                  {isIt ? 'Accedi / Collega' : 'Log In / Connect'}
+                </button>
+              </div>
+
+              {loginMessage && (
+                <div className="text-[12px] text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2 rounded-[8px]">
+                  {loginMessage}
                 </div>
               )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onPullData}
-              disabled={syncStatus === 'syncing'}
-              title={isIt ? 'Carica dati da Supabase' : 'Pull data from Supabase'}
-              className="p-2 rounded-lg bg-[var(--card)] border border-[var(--line)] text-[12px] font-bold text-[var(--ink)] hover:border-[var(--horizon)] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
-              <span>{isIt ? 'Scarica' : 'Pull'}</span>
-            </button>
-            <button
-              onClick={onPushData}
-              disabled={syncStatus === 'syncing'}
-              title={isIt ? 'Invia dati a Supabase' : 'Push data to Supabase'}
-              className="p-2 rounded-lg bg-[#3ECF8E] text-[#052316] text-[12px] font-extrabold hover:brightness-105 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span>{isIt ? 'Salva ora' : 'Push now'}</span>
-            </button>
-          </div>
+            </form>
+          )}
         </div>
 
-        {/* Credentials Form */}
-        <div className="mt-5 space-y-3.5">
-          <div>
-            <label className="block text-[12px] font-bold text-[var(--sub)] mb-1">
-              Project URL
-            </label>
+        {/* Create Backup Action */}
+        <div className="mt-4 p-4 rounded-[14px] bg-[var(--soft)] border border-[var(--line)] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[14px] font-extrabold text-[var(--ink)]">
+              <PlusCircle className="w-4 h-4 text-[#3ECF8E]" />
+              <span>{isIt ? 'Crea Nuovo Backup Istantaneo' : 'Create New Instant Backup'}</span>
+            </div>
+            <span className="text-[11.5px] text-[var(--sub)]">
+              {isIt ? `${db.trips.length} viaggi attuali` : `${db.trips.length} current trips`}
+            </span>
+          </div>
+
+          <div className="flex gap-2">
             <input
               type="text"
-              placeholder="https://xyzcompany.supabase.co"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full bg-[var(--soft)] border border-[var(--line)] rounded-[10px] p-[9px_12px] text-[13.5px] font-mono focus:border-[#3ECF8E] outline-none"
+              placeholder={isIt ? 'Nome/Nota backup (opzionale, es. Prima di cancellare)' : 'Backup label (optional)'}
+              value={backupLabel}
+              onChange={(e) => setBackupLabel(e.target.value)}
+              className="flex-1 bg-[var(--card)] border border-[var(--line)] rounded-[10px] px-3 py-2 text-[13px] outline-none focus:border-[#3ECF8E]"
             />
-          </div>
-
-          <div>
-            <label className="block text-[12px] font-bold text-[var(--sub)] mb-1">
-              API Anon Key (Public)
-            </label>
-            <input
-              type="password"
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              value={anonKey}
-              onChange={(e) => setAnonKey(e.target.value)}
-              className="w-full bg-[var(--soft)] border border-[var(--line)] rounded-[10px] p-[9px_12px] text-[13.5px] font-mono focus:border-[#3ECF8E] outline-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-between pt-1">
             <button
-              onClick={handleSaveCredentials}
-              disabled={testing}
-              className="px-4 py-2 bg-[var(--card)] border border-[var(--line)] rounded-[10px] text-[13px] font-bold hover:border-[#3ECF8E] hover:text-[#3ECF8E] flex items-center gap-2 cursor-pointer"
+              onClick={handleCreateNewBackup}
+              disabled={creatingBackup}
+              className="px-4 py-2 rounded-[10px] bg-[#3ECF8E] text-[#052316] text-[13px] font-extrabold hover:brightness-105 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              {testing ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-[#3ECF8E]" />
-              ) : (
-                <ShieldCheck className="w-4 h-4 text-[#3ECF8E]" />
-              )}
-              <span>{isIt ? 'Salva e Verifica Connessione' : 'Save & Test Connection'}</span>
+              <Database className="w-4 h-4" />
+              <span>{creatingBackup ? (isIt ? 'Salvataggio...' : 'Saving...') : (isIt ? 'Salva Backup' : 'Save Backup')}</span>
             </button>
-
-            <a
-              href="https://supabase.com/dashboard"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[12px] font-semibold text-[#3ECF8E] hover:underline flex items-center gap-1"
-            >
-              <span>{isIt ? 'Apri Supabase Dashboard' : 'Open Supabase Dashboard'}</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
           </div>
-
-          {/* Test Feedback */}
-          {testResult && (
-            <div
-              className={`p-3 rounded-[10px] text-[12.5px] flex items-start gap-2 border ${
-                testResult.success
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              }`}
-            >
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="leading-snug">{testResult.message}</div>
-            </div>
-          )}
         </div>
 
-        {/* SQL Script Section */}
-        <div className="mt-5 pt-4 border-t border-[var(--line)]">
+        {/* Download / Restore Old Backups List */}
+        <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-[14px] font-extrabold text-[var(--ink)]">
+              <History className="w-4 h-4 text-[#3ECF8E]" />
+              <span>{isIt ? 'Storico Backup (Carica o Ripristina Vecchi)' : 'Backup History (Restore Old)'}</span>
+            </div>
             <button
-              onClick={() => setShowSql(!showSql)}
-              className="text-[13px] font-bold text-[var(--sub)] hover:text-[var(--ink)] flex items-center gap-1.5 cursor-pointer"
+              onClick={() => loadBackupsList(accountName || inputAccount || 'main')}
+              className="text-[11.5px] text-[var(--sub)] hover:text-[var(--ink)] flex items-center gap-1 cursor-pointer"
             >
-              <span>{showSql ? '▼' : '►'}</span>
-              <span>{isIt ? 'Istruzioni Tabella SQL (Supabase SQL Editor)' : 'SQL Table Setup (Supabase SQL Editor)'}</span>
-            </button>
-            <button
-              onClick={handleCopySql}
-              className="text-[11.5px] font-bold text-[#3ECF8E] bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 border border-[#3ECF8E]/30 rounded-md px-2.5 py-1 flex items-center gap-1 cursor-pointer"
-            >
-              {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedSql ? (isIt ? 'Copiato!' : 'Copied!') : (isIt ? 'Copia SQL' : 'Copy SQL')}</span>
+              <RefreshCw className={`w-3 h-3 ${loadingBackups ? 'animate-spin' : ''}`} />
+              <span>{isIt ? 'Aggiorna' : 'Refresh'}</span>
             </button>
           </div>
 
-          {showSql && (
-            <div className="relative mt-2">
-              <pre className="bg-[#0b1329] border border-[var(--line)] rounded-[10px] p-3 text-[11.5px] font-mono text-emerald-300 overflow-x-auto max-h-[160px] leading-relaxed">
-                {SUPABASE_SQL_SCRIPT}
-              </pre>
-              <p className="mt-2 text-[11.5px] text-[var(--sub)]">
+          <div className="bg-[var(--soft)] border border-[var(--line)] rounded-[14px] p-2.5 max-h-[220px] overflow-y-auto space-y-2">
+            {loadingBackups ? (
+              <div className="text-center py-6 text-[12.5px] text-[var(--sub)]">
+                {isIt ? 'Caricamento storico backup in corso...' : 'Loading backup history...'}
+              </div>
+            ) : backups.length === 0 ? (
+              <div className="text-center py-6 text-[12.5px] text-[var(--sub)]">
                 {isIt
-                  ? '1. Vai nella tua Dashboard Supabase -> SQL Editor\n2. Incolla ed esegui questo script per creare la tabella travly_db.'
-                  : '1. Go to Supabase Dashboard -> SQL Editor\n2. Paste and run this script to create the travly_db table.'}
-              </p>
-            </div>
-          )}
+                  ? 'Nessun backup precedente salvato. Fai clic su "Salva Backup" per crearne uno.'
+                  : 'No previous backups found. Click "Save Backup" above to store one.'}
+              </div>
+            ) : (
+              backups.map((snap) => (
+                <div
+                  key={snap.id}
+                  className="bg-[var(--card)] border border-[var(--line)] hover:border-[var(--horizon)] rounded-[10px] p-3 flex items-center justify-between gap-3 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-extrabold text-[var(--ink)] truncate">
+                      {snap.label || 'Backup'}
+                    </div>
+                    <div className="text-[11px] text-[var(--sub)] flex items-center gap-2 mt-0.5">
+                      <span>{new Date(snap.createdAt).toLocaleString()}</span>
+                      <span>•</span>
+                      <span>{snap.tripCount} {isIt ? 'viaggi' : 'trips'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleRestore(snap)}
+                      className="px-3 py-1.5 rounded-[8px] bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[#3ECF8E] border border-[#3ECF8E]/30 text-[12px] font-extrabold flex items-center gap-1.5 cursor-pointer"
+                      title={isIt ? 'Carica e ripristina questo backup' : 'Restore this backup'}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isIt ? 'Carica / Ripristina' : 'Restore'}</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSnap(snap.id)}
+                      className="p-1.5 rounded-[8px] text-[var(--sub)] hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                      title={isIt ? 'Elimina backup' : 'Delete backup'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Modal Close Footer */}

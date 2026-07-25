@@ -37,6 +37,9 @@ import {
   getSupabaseClient,
   loadFromSupabase,
   saveToSupabase,
+  getStoredUserAccount,
+  saveStoredUserAccount,
+  clearStoredUserAccount,
 } from './utils/supabase';
 
 const STORAGE_KEY = 'travly_v2';
@@ -124,8 +127,13 @@ export default function App() {
   const activeTrip = db.trips.find((x) => x.id === db.activeId) || db.trips[0];
   const state = activeTrip.data;
 
-  // Modals & UI states
-  const [welcomeOpen, setWelcomeOpen] = useState<boolean>(!db.seen);
+  // Account state
+  const storedAcc = getStoredUserAccount().account;
+  const [accountName, setAccountName] = useState<string>(storedAcc);
+
+  // Modals & UI states (Only show welcome prompt if user is brand new and not logged in)
+  const isNewClient = !db.seen && !storedAcc;
+  const [welcomeOpen, setWelcomeOpen] = useState<boolean>(isNewClient);
   const [supabaseOpen, setSupabaseOpen] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<
     'idle' | 'syncing' | 'saved' | 'error' | 'unconfigured'
@@ -149,21 +157,23 @@ export default function App() {
     document.documentElement.lang = state.lang || 'it';
   }, [state.theme, state.lang]);
 
-  // Initial load from Supabase if configured
+  // Initial load from Supabase if configured or if returning user logged in
   useEffect(() => {
     async function initSupabaseSync() {
-      if (!isSupabaseConfigured) {
+      const activeAccount = accountName || 'main';
+      if (!isSupabaseConfigured && !accountName) {
         setSyncStatus('unconfigured');
         return;
       }
       try {
         setSyncStatus('syncing');
-        const remoteDb = await loadFromSupabase();
+        const remoteDb = await loadFromSupabase(activeAccount);
         if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
           setDb(remoteDb);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteDb));
           setLastSyncedAt(new Date());
           setSyncStatus('saved');
+          setWelcomeOpen(false); // Suppress example prompt for returning clients
         } else {
           setSyncStatus('idle');
         }
@@ -173,7 +183,7 @@ export default function App() {
       }
     }
     initSupabaseSync();
-  }, []);
+  }, [accountName]);
 
   // Persist to localStorage whenever database changes + sync to Supabase
   const saveDb = (updated: AppDatabase) => {
@@ -184,10 +194,10 @@ export default function App() {
       console.error('Failed to save to localStorage:', e);
     }
 
-    // Debounced or direct push to Supabase if configured
+    const activeAccount = accountName || 'main';
     if (getSupabaseClient()) {
       setSyncStatus('syncing');
-      saveToSupabase(updated)
+      saveToSupabase(updated, activeAccount)
         .then((ok) => {
           if (ok) {
             setSyncStatus('saved');
@@ -200,10 +210,60 @@ export default function App() {
     }
   };
 
-  const handlePullFromSupabase = async () => {
+  const handleLoginAccount = async (acc: string, pass: string) => {
+    saveStoredUserAccount(acc, pass);
+    setAccountName(acc);
+    setWelcomeOpen(false); // Hide example modal
+
     setSyncStatus('syncing');
     try {
-      const remoteDb = await loadFromSupabase();
+      const remoteDb = await loadFromSupabase(acc);
+      if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
+        setDb(remoteDb);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteDb));
+        setLastSyncedAt(new Date());
+        setSyncStatus('saved');
+      } else {
+        // Upload current database to this new account key
+        await saveToSupabase(db, acc);
+        setLastSyncedAt(new Date());
+        setSyncStatus('saved');
+      }
+    } catch (err: any) {
+      setSyncStatus('error');
+      throw err;
+    }
+  };
+
+  const handleLogoutAccount = () => {
+    clearStoredUserAccount();
+    setAccountName('');
+    setSyncStatus('idle');
+
+    // Reset local database state to isolated example so previous user data is protected
+    const freshDb: AppDatabase = {
+      v: 2,
+      activeId: 't1',
+      lang: 'it',
+      theme: 'light',
+      page: 'overview',
+      trips: [{ id: 't1', data: getExampleData() }],
+    };
+    setDb(freshDb);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(freshDb));
+    } catch (e) {}
+  };
+
+  const handleRestoreDatabase = (newDb: AppDatabase) => {
+    saveDb(newDb);
+  };
+
+  const handlePullFromSupabase = async () => {
+    const activeAccount = accountName || 'main';
+    setSyncStatus('syncing');
+    try {
+      const remoteDb = await loadFromSupabase(activeAccount);
       if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
         setDb(remoteDb);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteDb));
@@ -213,8 +273,8 @@ export default function App() {
         setSyncStatus('idle');
         alert(
           state.lang === 'it'
-            ? 'Nessun dato trovato su Supabase'
-            : 'No data found on Supabase'
+            ? `Nessun dato trovato per l'account "${activeAccount}"`
+            : `No data found for account "${activeAccount}"`
         );
       }
     } catch (err: any) {
@@ -227,9 +287,10 @@ export default function App() {
   };
 
   const handlePushToSupabase = async () => {
+    const activeAccount = accountName || 'main';
     setSyncStatus('syncing');
     try {
-      const ok = await saveToSupabase(db);
+      const ok = await saveToSupabase(db, activeAccount);
       if (ok) {
         setSyncStatus('saved');
         setLastSyncedAt(new Date());
@@ -767,10 +828,14 @@ export default function App() {
         isOpen={supabaseOpen}
         lang={state.lang}
         onClose={() => setSupabaseOpen(false)}
-        onPullData={handlePullFromSupabase}
-        onPushData={handlePushToSupabase}
+        db={db}
+        onRestoreDatabase={handleRestoreDatabase}
+        onPushCurrentData={handlePushToSupabase}
         syncStatus={syncStatus}
         lastSyncedAt={lastSyncedAt}
+        accountName={accountName}
+        onLoginAccount={handleLoginAccount}
+        onLogoutAccount={handleLogoutAccount}
       />
 
       <TooltipBox activeTip={activeTip} onClose={() => setActiveTip(null)} />

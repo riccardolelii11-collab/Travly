@@ -168,23 +168,14 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
           <option value="en">EN</option>
         </select>
 
-        {/* Save button */}
+        {/* Backup & Cloud Restore button */}
         <button
-          onClick={handleSaveClick}
-          className={`chip save border rounded-[11px] p-[9px_14px] text-[13px] font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
-            saveSuccess
-              ? 'bg-[#1E9E5A] border-[#1E9E5A] text-white'
-              : 'bg-[#12B5A5] border-[#12B5A5] text-[#06231f] hover:brightness-105'
-          }`}
-          title={isSupabaseConfigured ? 'Salva in locale e su Supabase Cloud' : 'Salva in locale'}
+          onClick={onOpenSupabase}
+          className="chip border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 rounded-[11px] p-[9px_13px] text-[13px] font-bold text-[#3ECF8E] hover:bg-[#3ECF8E]/20 transition-all flex items-center gap-1.5 cursor-pointer"
+          title="Gestisci e ripristina i backup salvati su Supabase"
         >
-          {isSupabaseConfigured && (
-            <span
-              className="w-2 h-2 rounded-full bg-emerald-950/80 shadow-[0_0_5px_rgba(255,255,255,0.8)]"
-              title="Sincronizzazione Supabase attiva"
-            />
-          )}
-          <span>{saveSuccess ? t('saved_ok', lang) : t('save_btn', lang)}</span>
+          <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]' : 'bg-amber-400'}`} />
+          <span>☁️ Backup & Cloud</span>
         </button>
 
         {/* More Menu Dropdown */}
@@ -244,30 +235,6 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
               >
                 <span className="w-[18px] text-center opacity-75">🗑</span>
                 <span>{t('m_del', lang)}</span>
-              </button>
-
-              <div className="h-[1px] bg-[var(--hair)] my-[5px] mx-[4px]" />
-
-              <button
-                onClick={() => {
-                  setMoreOpen(false);
-                  onBackup();
-                }}
-                className="flex items-center gap-[10px] w-full text-left border-none bg-transparent text-[var(--ink)] rounded-[9px] p-[10px_11px] text-[13.5px] font-semibold hover:bg-[var(--soft)] cursor-pointer"
-              >
-                <span className="w-[18px] text-center opacity-75">⬇</span>
-                <span>{t('m_backup', lang)}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setMoreOpen(false);
-                  restoreInputRef.current?.click();
-                }}
-                className="flex items-center gap-[10px] w-full text-left border-none bg-transparent text-[var(--ink)] rounded-[9px] p-[10px_11px] text-[13.5px] font-semibold hover:bg-[var(--soft)] cursor-pointer"
-              >
-                <span className="w-[18px] text-center opacity-75">⬆</span>
-                <span>{t('m_restore', lang)}</span>
               </button>
 
               <div className="h-[1px] bg-[var(--hair)] my-[5px] mx-[4px]" />
