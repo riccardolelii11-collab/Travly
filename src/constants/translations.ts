@@ -322,7 +322,7 @@ export function getExampleData(): TripData {
     currency: 'EUR',
     theme: 'light',
     reserve: false,
-    destination: 'Maldive',
+    destination: 'alle Maldive',
     departure: '2026-12-15',
     contributors: [
       { name: 'Io', share: '60' },
