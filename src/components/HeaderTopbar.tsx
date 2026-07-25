@@ -168,26 +168,23 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
           <option value="en">EN</option>
         </select>
 
-        {/* Supabase Cloud DB Button */}
-        <button
-          onClick={onOpenSupabase}
-          className="chip border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 rounded-[11px] p-[8px_12px] text-[13px] font-bold text-[#3ECF8E] hover:bg-[#3ECF8E]/20 transition-all flex items-center gap-1.5 cursor-pointer"
-          title="Configura Supabase Database Cloud"
-        >
-          <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]' : 'bg-amber-400'}`} />
-          <span>Supabase DB</span>
-        </button>
-
         {/* Save button */}
         <button
           onClick={handleSaveClick}
-          className={`chip save border rounded-[11px] p-[9px_12px] text-[13px] font-bold transition-all duration-150 ${
+          className={`chip save border rounded-[11px] p-[9px_14px] text-[13px] font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
             saveSuccess
               ? 'bg-[#1E9E5A] border-[#1E9E5A] text-white'
               : 'bg-[#12B5A5] border-[#12B5A5] text-[#06231f] hover:brightness-105'
           }`}
+          title={isSupabaseConfigured ? 'Salva in locale e su Supabase Cloud' : 'Salva in locale'}
         >
-          {saveSuccess ? t('saved_ok', lang) : t('save_btn', lang)}
+          {isSupabaseConfigured && (
+            <span
+              className="w-2 h-2 rounded-full bg-emerald-950/80 shadow-[0_0_5px_rgba(255,255,255,0.8)]"
+              title="Sincronizzazione Supabase attiva"
+            />
+          )}
+          <span>{saveSuccess ? t('saved_ok', lang) : t('save_btn', lang)}</span>
         </button>
 
         {/* More Menu Dropdown */}
@@ -205,6 +202,28 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
 
           {moreOpen && (
             <div className="menu absolute right-0 top-[calc(100%+6px)] bg-[var(--card)] border border-[var(--line)] rounded-[13px] shadow-2xl p-1.5 min-w-[208px] z-50 flex flex-col gap-[1px]">
+              <button
+                onClick={() => {
+                  setMoreOpen(false);
+                  onOpenSupabase();
+                }}
+                className="flex items-center justify-between w-full text-left border-none bg-transparent text-[var(--ink)] rounded-[9px] p-[10px_11px] text-[13.5px] font-semibold hover:bg-[var(--soft)] cursor-pointer"
+              >
+                <div className="flex items-center gap-[10px]">
+                  <span className="w-[18px] text-center opacity-85 text-[#3ECF8E]">🗄</span>
+                  <span>Database Supabase</span>
+                </div>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isSupabaseConfigured
+                      ? 'bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]'
+                      : 'bg-amber-400'
+                  }`}
+                />
+              </button>
+
+              <div className="h-[1px] bg-[var(--hair)] my-[5px] mx-[4px]" />
+
               <button
                 onClick={() => {
                   setMoreOpen(false);
