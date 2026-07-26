@@ -45,6 +45,7 @@ interface SupabaseModalProps {
   accountName: string;
   onLoginAccount: (account: string, pass: string) => Promise<void>;
   onLogoutAccount: () => void;
+  onDeleteAccount: () => Promise<void>;
 }
 
 export const SupabaseModal: React.FC<SupabaseModalProps> = ({
@@ -59,6 +60,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   accountName,
   onLoginAccount,
   onLogoutAccount,
+  onDeleteAccount,
 }) => {
   const [url, setUrl] = useState('');
   const [anonKey, setAnonKey] = useState('');
@@ -77,6 +79,12 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   const [loadingBackups, setLoadingBackups] = useState(false);
   const [backupLabel, setBackupLabel] = useState('');
   const [creatingBackup, setCreatingBackup] = useState(false);
+
+  // Account deletion state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [confirmCheck1, setConfirmCheck1] = useState(false);
+  const [confirmCheck2, setConfirmCheck2] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const isIt = lang === 'it';
   const isLoggedIn = !!accountName;
@@ -143,6 +151,31 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setInputAccount('');
     setInputPass('');
     setLoginMessage(null);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    if (!confirmCheck1 || !confirmCheck2) return;
+    setDeletingAccount(true);
+    try {
+      await onDeleteAccount();
+      setBackups([]);
+      setInputAccount('');
+      setInputPass('');
+      setShowDeleteConfirm(false);
+      setConfirmCheck1(false);
+      setConfirmCheck2(false);
+      setLoginMessage(
+        isIt
+          ? 'Account e tutti i dati cloud eliminati con successo.'
+          : 'Account and all cloud data deleted successfully.'
+      );
+    } catch (err: any) {
+      console.error('Delete account failed:', err);
+      setLoginMessage(isIt ? 'Errore durante l\'eliminazione' : 'Delete error');
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   const handleCreateNewBackup = async () => {
@@ -294,22 +327,102 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
           </div>
 
           {isLoggedIn ? (
-            <div className="flex items-center justify-between bg-[var(--card)] p-3 rounded-[10px] border border-[var(--line)]">
-              <div>
-                <div className="text-[13px] font-extrabold text-[var(--ink)]">
-                  👤 {accountName}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-[var(--card)] p-3 rounded-[10px] border border-[var(--line)]">
+                <div>
+                  <div className="text-[13px] font-extrabold text-[var(--ink)]">
+                    👤 {accountName}
+                  </div>
+                  <div className="text-[11.5px] text-[var(--sub)] mt-0.5">
+                    {isIt ? 'I tuoi viaggi vengono salvati automaticamente su questo account' : 'Your trips are saved automatically to this account'}
+                  </div>
                 </div>
-                <div className="text-[11.5px] text-[var(--sub)] mt-0.5">
-                  {isIt ? 'I tuoi viaggi vengono salvati automaticamente su questo account' : 'Your trips are saved automatically to this account'}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleLogoutClick}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--soft)] hover:bg-[var(--line)] text-[var(--ink)] border border-[var(--line)] text-[12px] font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-[var(--sub)]" />
+                    <span>{isIt ? 'Disconnetti' : 'Logout'}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDeleteConfirm(!showDeleteConfirm);
+                      setConfirmCheck1(false);
+                      setConfirmCheck2(false);
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[12px] font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isIt ? 'Elimina Account' : 'Delete Account'}</span>
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={handleLogoutClick}
-                className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[12px] font-bold flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>{isIt ? 'Disconnetti' : 'Logout'}</span>
-              </button>
+
+              {showDeleteConfirm && (
+                <div className="p-3.5 rounded-[12px] bg-rose-500/10 border border-rose-500/30 space-y-3 text-[12.5px]">
+                  <div className="flex items-center gap-2 text-rose-400 font-extrabold text-[13px]">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{isIt ? 'Eliminazione Definitiva Account e Dati' : 'Permanent Account & Data Deletion'}</span>
+                  </div>
+                  <p className="text-[12px] text-[var(--sub)] leading-relaxed">
+                    {isIt
+                      ? `Stai per eliminare definitivamente l'account "${accountName}" e tutti i dati e viaggi salvati nel cloud.`
+                      : `You are about to permanently delete account "${accountName}" and all associated cloud data.`}
+                  </p>
+
+                  <div className="space-y-2 pt-1">
+                    <label className="flex items-start gap-2.5 cursor-pointer text-[12px] text-[var(--ink)] font-medium">
+                      <input
+                        type="checkbox"
+                        checked={confirmCheck1}
+                        onChange={(e) => setConfirmCheck1(e.target.checked)}
+                        className="mt-0.5 rounded accent-rose-500 w-4 h-4"
+                      />
+                      <span>
+                        {isIt
+                          ? "Confermo di voler eliminare l'account e tutti i viaggi salvati."
+                          : 'I confirm that I want to delete the account and all saved trips.'}
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 cursor-pointer text-[12px] text-[var(--ink)] font-medium">
+                      <input
+                        type="checkbox"
+                        checked={confirmCheck2}
+                        onChange={(e) => setConfirmCheck2(e.target.checked)}
+                        className="mt-0.5 rounded accent-rose-500 w-4 h-4"
+                      />
+                      <span>
+                        {isIt
+                          ? "Prendo atto che l'operazione è irreversibile e i dati non potranno essere recuperati."
+                          : 'I understand this action is irreversible and data cannot be recovered.'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-3 py-1.5 rounded-[8px] bg-[var(--card)] border border-[var(--line)] text-[12px] font-bold text-[var(--ink)] hover:bg-[var(--soft)] cursor-pointer"
+                    >
+                      {isIt ? 'Annulla' : 'Cancel'}
+                    </button>
+                    <button
+                      onClick={handleConfirmDeleteAccount}
+                      disabled={!confirmCheck1 || !confirmCheck2 || deletingAccount}
+                      className="px-3.5 py-1.5 rounded-[8px] bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-[12px] font-extrabold flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>
+                        {deletingAccount
+                          ? (isIt ? 'Eliminazione...' : 'Deleting...')
+                          : (isIt ? 'Conferma ed Elimina Definitivamente' : 'Confirm & Delete Permanently')}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <form onSubmit={handleLoginSubmit} className="space-y-3">

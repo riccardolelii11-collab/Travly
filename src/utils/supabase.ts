@@ -337,3 +337,24 @@ export async function deleteBackupSnapshot(id: string, accountKey: string): Prom
   return true;
 }
 
+export async function deleteAccountAndData(accountKey: string): Promise<boolean> {
+  const key = accountKey.trim().toLowerCase();
+  if (!key) return false;
+
+  // Remove local backups
+  localStorage.removeItem(`${LOCAL_BACKUPS_KEY}_${key}`);
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase.from('travly_db').delete().eq('id', key);
+      await supabase.from('travly_backups').delete().eq('user_account', key);
+    } catch (err) {
+      console.warn('Error deleting account from Supabase:', err);
+    }
+  }
+
+  clearStoredUserAccount();
+  return true;
+}
+

@@ -40,6 +40,7 @@ import {
   getStoredUserAccount,
   saveStoredUserAccount,
   clearStoredUserAccount,
+  deleteAccountAndData,
 } from './utils/supabase';
 
 const STORAGE_KEY = 'travly_v2';
@@ -241,6 +242,26 @@ export default function App() {
     setSyncStatus('idle');
 
     // Reset local database state to isolated example so previous user data is protected
+    const freshDb: AppDatabase = {
+      v: 2,
+      activeId: 't1',
+      lang: 'it',
+      theme: 'light',
+      page: 'overview',
+      trips: [{ id: 't1', data: getExampleData() }],
+    };
+    setDb(freshDb);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(freshDb));
+    } catch (e) {}
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!accountName) return;
+    await deleteAccountAndData(accountName);
+    setAccountName('');
+    setSyncStatus('idle');
+
     const freshDb: AppDatabase = {
       v: 2,
       activeId: 't1',
@@ -836,6 +857,7 @@ export default function App() {
         accountName={accountName}
         onLoginAccount={handleLoginAccount}
         onLogoutAccount={handleLogoutAccount}
+        onDeleteAccount={handleDeleteAccount}
       />
 
       <TooltipBox activeTip={activeTip} onClose={() => setActiveTip(null)} />
