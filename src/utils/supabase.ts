@@ -343,20 +343,35 @@ export async function deleteAccountAndData(accountKey: string): Promise<boolean>
   const key = accountKey.trim().toLowerCase();
   if (!key) return false;
 
-  // Remove local backups
-  localStorage.removeItem(`${LOCAL_BACKUPS_KEY}_${key}`);
+  // 1. Remove local backups for this account key
+  try {
+    localStorage.removeItem(`${LOCAL_BACKUPS_KEY}_${key}`);
+  } catch (e) {
+    console.warn('Error clearing local backups:', e);
+  }
 
+  // 2. Clear credentials from local storage
+  clearStoredUserAccount();
+
+  // 3. Delete row from Supabase if connected
   const supabase = getSupabaseClient();
   if (supabase) {
-    try {
-      await supabase.from('travly_db').delete().eq('id', key);
-      await supabase.from('travly_backups').delete().eq('user_account', key);
-    } catch (err) {
-      console.warn('Error deleting account from Supabase:', err);
+    const { error: err1 } = await supabase.from('travly_db').delete().eq('id', key);
+    const { error: err2 } = await supabase.from('travly_backups').delete().eq('user_account', key);
+
+    if (err1) {
+      console.error('Error deleting account from travly_db:', err1);
+    }
+    if (err2) {
+      console.error('Error deleting backups from travly_backups:', err2);
+    }
+
+    if (err1 || err2) {
+      const msg = err1?.message || err2?.message || 'Database deletion failed on Supabase';
+      throw new Error(msg);
     }
   }
 
-  clearStoredUserAccount();
   return true;
 }
 

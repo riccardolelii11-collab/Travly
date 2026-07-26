@@ -72,6 +72,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   // Login form state
   const [inputAccount, setInputAccount] = useState('');
   const [inputPass, setInputPass] = useState('');
+  const [inputPassConfirm, setInputPassConfirm] = useState('');
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
 
   // Backups history state
@@ -98,6 +99,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
       const stored = getStoredUserAccount();
       setInputAccount(stored.account || accountName || '');
       setInputPass(stored.pass || '');
+      setInputPassConfirm(stored.pass || '');
 
       setTestResult(null);
       setLoginMessage(null);
@@ -135,6 +137,14 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
       setLoginMessage(isIt ? 'Inserisci un nome account' : 'Please enter an account name');
       return;
     }
+    if (inputPass.trim() !== inputPassConfirm.trim()) {
+      setLoginMessage(
+        isIt
+          ? 'Le password non coincidono. Inserisci la stessa password in entrambi i campi.'
+          : 'Passwords do not match. Please enter the matching password in both fields.'
+      );
+      return;
+    }
     setLoginMessage(null);
     try {
       await onLoginAccount(inputAccount.trim(), inputPass.trim());
@@ -150,6 +160,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setBackups([]);
     setInputAccount('');
     setInputPass('');
+    setInputPassConfirm('');
     setLoginMessage(null);
     setShowDeleteConfirm(false);
   };
@@ -162,17 +173,22 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
       setBackups([]);
       setInputAccount('');
       setInputPass('');
+      setInputPassConfirm('');
       setShowDeleteConfirm(false);
       setConfirmCheck1(false);
       setConfirmCheck2(false);
       setLoginMessage(
         isIt
-          ? 'Account e tutti i dati cloud eliminati con successo.'
-          : 'Account and all cloud data deleted successfully.'
+          ? 'Account e tutti i dati cloud eliminati con successo dal database!'
+          : 'Account and all cloud data deleted successfully from the database!'
       );
     } catch (err: any) {
       console.error('Delete account failed:', err);
-      setLoginMessage(isIt ? 'Errore durante l\'eliminazione' : 'Delete error');
+      setLoginMessage(
+        isIt
+          ? `Errore eliminazione: ${err?.message || 'Permessi insufficienti su Supabase'}`
+          : `Delete error: ${err?.message || 'Insufficient permissions on Supabase'}`
+      );
     } finally {
       setDeletingAccount(false);
     }
@@ -426,7 +442,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
             </div>
           ) : (
             <form onSubmit={handleLoginSubmit} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-[11.5px] font-bold text-[var(--sub)] mb-1">
                     {isIt ? 'Nome Account / Email / ID' : 'Account Name / ID'}
@@ -445,7 +461,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
 
                 <div>
                   <label className="block text-[11.5px] font-bold text-[var(--sub)] mb-1">
-                    {isIt ? 'Password / Key Sicurezza' : 'Password / Security Key'}
+                    {isIt ? 'Password' : 'Password'}
                   </label>
                   <div className="relative">
                     <Key className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--sub)]" />
@@ -454,6 +470,22 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
                       placeholder="••••••••"
                       value={inputPass}
                       onChange={(e) => setInputPass(e.target.value)}
+                      className="w-full bg-[var(--card)] border border-[var(--line)] rounded-[9px] pl-8 pr-3 py-2 text-[13px] font-medium outline-none focus:border-[#3ECF8E]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11.5px] font-bold text-[var(--sub)] mb-1">
+                    {isIt ? 'Conferma Password' : 'Confirm Password'}
+                  </label>
+                  <div className="relative">
+                    <Key className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--sub)]" />
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={inputPassConfirm}
+                      onChange={(e) => setInputPassConfirm(e.target.value)}
                       className="w-full bg-[var(--card)] border border-[var(--line)] rounded-[9px] pl-8 pr-3 py-2 text-[13px] font-medium outline-none focus:border-[#3ECF8E]"
                     />
                   </div>
