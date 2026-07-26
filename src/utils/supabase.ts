@@ -133,6 +133,8 @@ drop policy if exists "Public insert db" on travly_db;
 create policy "Public insert db" on travly_db for insert with check (true);
 drop policy if exists "Public update db" on travly_db;
 create policy "Public update db" on travly_db for update using (true);
+drop policy if exists "Public delete db" on travly_db;
+create policy "Public delete db" on travly_db for delete using (true);
 
 drop policy if exists "Public select backups" on travly_backups;
 create policy "Public select backups" on travly_backups for select using (true);
