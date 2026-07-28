@@ -653,7 +653,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="main flex-1 min-w-0 p-[24px_40px_72px] max-lg:p-[18px_16px_56px]">
+      <main className="main flex-1 min-w-0 p-[24px_40px_72px] lg:p-[24px_40px_72px] max-lg:p-[16px_14px_100px]">
         <HeaderTopbar
           trips={db.trips}
           activeId={db.activeId}

@@ -86,8 +86,8 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
   const getTripName = (tr: Trip) => tr.data.destination || t('untitled', lang);
 
   return (
-    <header className="topbar flex items-end justify-between gap-5 flex-wrap mb-6">
-      <div className="trip-id flex items-center gap-4 flex-wrap">
+    <header className="topbar flex items-end justify-between gap-4 flex-wrap mb-6">
+      <div className="trip-id flex items-center gap-3 flex-wrap w-full sm:w-auto">
         {/* Trip selector dropdown */}
         <select
           value={activeId}
@@ -98,7 +98,7 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
               onSwitchTrip(e.target.value);
             }
           }}
-          className="chip trip-sel font-bold max-w-[210px] bg-[var(--card)] border border-[var(--line)] rounded-[11px] p-[9px_12px] text-[13px] text-[var(--ink)] cursor-pointer"
+          className="chip trip-sel font-bold w-full sm:w-auto sm:max-w-[210px] bg-[var(--card)] border border-[var(--line)] rounded-[11px] p-[9px_12px] text-[13px] text-[var(--ink)] cursor-pointer"
         >
           {trips.map((x) => (
             <option key={x.id} value={x.id}>
@@ -108,26 +108,27 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
           <option value="__new">＋ {t('new_trip', lang)}</option>
         </select>
 
-        <div className="divider w-[1px] h-[34px] bg-[var(--line)]" />
+        <div className="divider hidden md:block w-[1px] h-[34px] bg-[var(--line)]" />
 
         {/* Editable Trip Label and Destination */}
-        <div className="field">
+        <div className="field min-w-[180px] flex-1 sm:flex-initial">
           <input
             value={tripLabel}
             onChange={(e) => onUpdateTripLabel(e.target.value)}
-            className="lab-edit block text-[11px] font-bold uppercase tracking-widest text-[var(--sub)] p-[1px_4px] -ml-1 rounded-md w-auto min-w-[54px] max-w-[230px] border-none bg-transparent hover:bg-[var(--soft)] focus:bg-[var(--soft)] outline-none"
+            className="lab-edit block text-[11px] font-bold uppercase tracking-widest text-[var(--sub)] p-[1px_4px] -ml-1 rounded-md w-full max-w-[230px] border-none bg-transparent hover:bg-[var(--soft)] focus:bg-[var(--soft)] outline-none"
             title="Modifica etichetta"
             maxLength={40}
           />
           <input
+            id="destInput"
             value={destination}
             onChange={(e) => onUpdateDestination(e.target.value)}
             placeholder="—"
-            className="dest text-[24px] font-extrabold tracking-tight max-w-[260px] border-none bg-transparent text-[var(--ink)] outline-none"
+            className="dest text-[20px] sm:text-[24px] font-extrabold tracking-tight w-full max-w-[260px] border-none bg-transparent text-[var(--ink)] outline-none"
           />
         </div>
 
-        <div className="divider w-[1px] h-[34px] bg-[var(--line)]" />
+        <div className="divider hidden md:block w-[1px] h-[34px] bg-[var(--line)]" />
 
         {/* Departure date */}
         <div className="field">
@@ -138,13 +139,13 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
             type="date"
             value={departure}
             onChange={(e) => onUpdateDeparture(e.target.value)}
-            className="date num text-[15px] font-bold font-mono border-none bg-transparent text-[var(--ink)] outline-none cursor-pointer"
+            className="date num text-[14px] sm:text-[15px] font-bold font-mono border-none bg-transparent text-[var(--ink)] outline-none cursor-pointer"
           />
         </div>
       </div>
 
       {/* Tools on the right */}
-      <div className="tools flex items-center gap-2 flex-wrap">
+      <div className="tools flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
         {/* Currency selector */}
         <select
           value={currency}
@@ -177,7 +178,8 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
           title="Gestisci e ripristina i backup salvati su Supabase"
         >
           <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]' : 'bg-amber-400'}`} />
-          <span>☁️ Backup & Cloud</span>
+          <span className="hidden xs:inline">☁️ Backup & Cloud</span>
+          <span className="xs:hidden">☁️ Cloud</span>
         </button>
 
         {/* More Menu Dropdown */}
@@ -187,7 +189,7 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
               e.stopPropagation();
               setMoreOpen((prev) => !prev);
             }}
-            className="chip ghost border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[9px_12px] text-[13px] font-bold text-[var(--sub)] hover:text-[var(--ink)] hover:border-[var(--horizon)] transition-colors"
+            className="chip ghost border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[9px_12px] text-[13px] font-bold text-[var(--sub)] hover:text-[var(--ink)] hover:border-[var(--horizon)] transition-colors cursor-pointer"
             aria-haspopup="true"
           >
             {t('more_lbl', lang)}

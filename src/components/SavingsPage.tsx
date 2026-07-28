@@ -308,7 +308,7 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
       </div>
 
       {/* Activity Heatmap Card */}
-      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px] mb-5">
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_16px] sm:p-[22px_24px] mb-5">
         <div className="sec-head flex items-center justify-between gap-3 mb-[14px]">
           <div className="flex items-center gap-1.5">
             <h2 className="text-[15px] font-extrabold">{t('heat_title', lang)}</h2>
@@ -324,13 +324,16 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
           </div>
           <span className="hint text-[13px] text-[var(--sub)]">{t('heat_sub', lang)}</span>
         </div>
-        {renderHeatmap()}
+        <div className="overflow-x-auto pb-1">
+          {renderHeatmap()}
+        </div>
       </div>
 
       {/* Deposits Table Card */}
-      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_16px] sm:p-[22px_24px]">
         {state.savings.length ? (
-          <table className="tbl w-full border-collapse">
+          <div className="overflow-x-auto">
+            <table className="tbl w-full border-collapse min-w-[540px]">
             <thead>
               <tr className="border-b border-[var(--hair)]">
                 <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
@@ -425,6 +428,7 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
               ))}
             </tbody>
           </table>
+          </div>
         ) : (
           <div className="empty text-center py-10 px-5 text-[var(--muted)]">
             <div className="ico text-[34px] opacity-50">◷</div>

@@ -42,8 +42,9 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
         </div>
       </div>
 
-      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
-        <table className="tbl w-full border-collapse">
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_16px] sm:p-[22px_24px]">
+        <div className="overflow-x-auto">
+          <table className="tbl w-full border-collapse min-w-[480px]">
           <thead>
             <tr className="border-b border-[var(--hair)]">
               <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
@@ -123,6 +124,7 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
             })}
           </tbody>
         </table>
+        </div>
 
         <button
           onClick={onAddCategory}

@@ -42,16 +42,41 @@ REGOLE FONDAMENTALI:
 Punti sul budget da sintetizzare:
 ${insightsText.map((t: string) => `- ${t}`).join("\n")}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: prompt,
-      });
+      const candidateModels = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
+      let rephrased: string | null = null;
+      let lastErr: any = null;
 
-      const rephrased = response.text ? response.text.trim() : null;
-      res.json({ rephrased });
+      for (const modelName of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+          });
+          if (response.text) {
+            rephrased = response.text.trim();
+            break;
+          }
+        } catch (err: any) {
+          lastErr = err;
+          // If rate limited or quota exceeded, try next model or break cleanly
+          const msg = String(err?.message || err);
+          if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("Quota exceeded")) {
+            console.warn(`Gemini model ${modelName} rate limited / quota exceeded. Trying fallback...`);
+          } else {
+            console.warn(`Gemini model ${modelName} error:`, msg);
+          }
+        }
+      }
+
+      if (rephrased) {
+        return res.json({ rephrased });
+      }
+
+      // If all models failed or rate limited, return 200 with rephrased: null so app uses clean local insights
+      return res.json({ rephrased: null, rateLimited: true });
     } catch (err: any) {
-      console.error("Gemini API Error:", err);
-      res.status(500).json({ error: err?.message || "Failed to generate AI response" });
+      console.warn("Gemini API request handling failed gracefully:", err?.message || err);
+      return res.json({ rephrased: null, rateLimited: true });
     }
   });
 

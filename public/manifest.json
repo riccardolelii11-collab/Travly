@@ -1,0 +1,30 @@
+{
+  "short_name": "Travly",
+  "name": "Travly — Pianifica. Risparmia. Parti.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0B1B3A",
+  "theme_color": "#0B1B3A",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "Pianificatore di budget e risparmi per i tuoi viaggi. Calcola il ritmo mensile per partire in tempo, gestisci spese di gruppo e monitora i tuoi risparmi."
+}
