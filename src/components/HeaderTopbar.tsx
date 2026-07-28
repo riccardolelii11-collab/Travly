@@ -25,6 +25,7 @@ interface HeaderTopbarProps {
   onRestore: (file: File) => void;
   onExportCSV: () => void;
   onPrint: () => void;
+  onOpenReport: () => void;
   onLoadExample: () => void;
   onHelp: () => void;
   onClear: () => void;
@@ -54,6 +55,7 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
   onRestore,
   onExportCSV,
   onPrint,
+  onOpenReport,
   onLoadExample,
   onHelp,
   onClear,
@@ -259,6 +261,17 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
               >
                 <span className="w-[18px] text-center opacity-75">⎙</span>
                 <span>{t('m_print', lang)}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMoreOpen(false);
+                  onOpenReport();
+                }}
+                className="flex items-center gap-[10px] w-full text-left border-none bg-transparent text-[var(--ink)] rounded-[9px] p-[10px_11px] text-[13.5px] font-semibold hover:bg-[var(--soft)] cursor-pointer"
+              >
+                <span className="w-[18px] text-center opacity-75">📊</span>
+                <span>{t('m_report', lang)}</span>
               </button>
 
               <div className="h-[1px] bg-[var(--hair)] my-[5px] mx-[4px]" />

@@ -1,7 +1,8 @@
 import React from 'react';
 import { ComputedMetrics, Page, TripData } from '../types';
 import { COLORS } from '../constants/translations';
-import { catName, fdate, fmt, NUM, pct, t } from '../utils/calculations';
+import { catName, fdate, fmt, getBudgetInsights, NUM, pct, simulateExtraSavings, t } from '../utils/calculations';
+import { rephraseInsightsWithGemini } from '../utils/gemini';
 
 interface OverviewPageProps {
   state: TripData;
@@ -24,6 +25,54 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
 }) => {
   const lang = state.lang;
   const currency = state.currency;
+
+  const [extraSavings, setExtraSavings] = React.useState<number>(0);
+  const simResult = simulateExtraSavings(state, extraSavings);
+
+  const insights = getBudgetInsights(state, d);
+
+  const formatInsightText = React.useCallback(
+    (textKey: string, params?: Record<string, string>) => {
+      let text = t(textKey, lang);
+      if (params) {
+        Object.entries(params).forEach(([key, val]) => {
+          text = text.replace(`{${key}}`, val);
+        });
+      }
+      return text;
+    },
+    [lang]
+  );
+
+  const insightStrings = React.useMemo(
+    () => insights.map((ins) => formatInsightText(ins.textKey, ins.params)),
+    [insights, formatInsightText]
+  );
+
+  const [aiSummary, setAiSummary] = React.useState<string | null>(null);
+  const [aiLoading, setAiLoading] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (insightStrings.length === 0) {
+      setAiSummary(null);
+      setAiLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setAiLoading(true);
+
+    rephraseInsightsWithGemini(insightStrings, lang).then((res) => {
+      if (isMounted) {
+        setAiSummary(res);
+        setAiLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [JSON.stringify(insightStrings), lang]);
 
   // Onboarding checklist steps
   const steps = [
@@ -51,6 +100,49 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
   };
 
   const [statusBg, statusTextColor, statusLabel, statusIcon] = statusMap[d.status];
+
+  // Narrative summary calculations
+  const depDateObj = state.departure ? new Date(state.departure + 'T00:00:00') : null;
+  let daysDiff: number | null = null;
+  if (d.proj && depDateObj && !isNaN(depDateObj.getTime())) {
+    const pMidnight = new Date(d.proj.getFullYear(), d.proj.getMonth(), d.proj.getDate());
+    const dMidnight = new Date(depDateObj.getFullYear(), depDateObj.getMonth(), depDateObj.getDate());
+    const diffMs = dMidnight.getTime() - pMidnight.getTime();
+    daysDiff = Math.round(diffMs / 864e5);
+  }
+
+  let mainNarrativeText = '';
+  let paceNarrativeText = '';
+
+  if (d.remaining <= 0 || d.status === 'done') {
+    mainNarrativeText = t('narrative_done', lang).replace('{total}', fmt(d.total, currency, lang));
+  } else if (d.days == null || !state.departure) {
+    mainNarrativeText = t('narrative_need_nodate', lang).replace('{rem}', fmt(d.remaining, currency, lang));
+  } else if (d.days < 0) {
+    mainNarrativeText = t('dep_passed', lang);
+  } else {
+    mainNarrativeText = t('narrative_need', lang)
+      .replace('{rem}', fmt(d.remaining, currency, lang))
+      .replace('{days}', String(d.days))
+      .replace('{month}', fmt(d.needMonth, currency, lang))
+      .replace('{week}', fmt(d.needWeek, currency, lang));
+
+    if (daysDiff !== null && d.proj) {
+      if (daysDiff > 0) {
+        paceNarrativeText = t('narrative_ahead', lang)
+          .replace('{days}', String(daysDiff))
+          .replace('{date}', fdate(d.proj, lang));
+      } else if (daysDiff === 0) {
+        paceNarrativeText = t('narrative_exact', lang).replace('{date}', fdate(d.proj, lang));
+      } else {
+        paceNarrativeText = t('narrative_behind', lang)
+          .replace('{days}', String(Math.abs(daysDiff)))
+          .replace('{date}', fdate(d.proj, lang));
+      }
+    } else {
+      paceNarrativeText = t('narrative_no_pace', lang);
+    }
+  }
 
   const projLine =
     d.status === 'nodate'
@@ -436,7 +528,6 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
           >
             <span>
               {statusIcon} {statusLabel}
-              {projLine ? ` · ${projLine}` : ''}
             </span>
           </div>
 
@@ -514,6 +605,126 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
               ⓘ {t('prov_note', lang)}
             </div>
           )}
+
+          {/* Narrative Summary Section */}
+          <div className="narrative-section mt-4 p-3.5 sm:p-4 rounded-[14px] bg-[var(--soft)] border border-[var(--hair)] text-[13px] leading-relaxed">
+            <div className="flex items-start gap-2.5">
+              <span className="text-[18px] leading-none select-none">💬</span>
+              <div className="space-y-1">
+                <p className="font-medium text-[var(--ink)]">
+                  {mainNarrativeText}
+                </p>
+                {paceNarrativeText && (
+                  <p className={`text-[12px] font-semibold ${daysDiff !== null && daysDiff < 0 ? 'text-[var(--red)]' : 'text-[var(--sub)]'}`}>
+                    {paceNarrativeText}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Automatic Budget Insights */}
+          {insights.length > 0 && (
+            <div className="insights-section mt-4 space-y-2">
+              <div className="text-[12px] font-bold text-[var(--sub)] uppercase tracking-wider flex items-center gap-1.5">
+                <span>💡</span> {t('insights_title', lang)}
+              </div>
+
+              {/* AI Gemini summary if available or loading */}
+              {aiLoading && (
+                <div className="p-3 rounded-[12px] bg-[var(--soft)] border border-[var(--hair)] text-[12px] font-medium text-[var(--sub)] flex items-center gap-2 animate-pulse">
+                  <span className="text-[14px]">✨</span>
+                  <span>{t('ai_generating', lang)}</span>
+                </div>
+              )}
+
+              {aiSummary && !aiLoading && (
+                <div className="p-3.5 rounded-[12px] bg-[#12B5A5]/10 border border-[#12B5A5]/30 text-[13px] font-medium text-[var(--ink)] space-y-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#12B5A5] uppercase tracking-wider">
+                    <span>✨</span> {t('ai_insight_badge', lang)}
+                  </div>
+                  <p className="leading-relaxed">{aiSummary}</p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {insights.map((ins, idx) => {
+                  let badge = '💡';
+                  let styleClass = 'bg-[var(--soft)] border-[var(--hair)] text-[var(--ink)]';
+                  if (ins.type === 'warning') {
+                    badge = '⚠️';
+                    styleClass = 'bg-[rgba(214,72,59,0.06)] border-[rgba(214,72,59,0.2)] text-[var(--red)]';
+                  } else if (ins.type === 'success') {
+                    badge = '✨';
+                    styleClass = 'bg-[#12B5A5]/10 border-[#12B5A5]/25 text-[#12B5A5]';
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-[12px] border text-[12.5px] font-semibold flex items-start gap-2.5 ${styleClass}`}
+                    >
+                      <span className="text-[15px] leading-none shrink-0">{badge}</span>
+                      <span className="leading-snug">{formatInsightText(ins.textKey, ins.params)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Simulator "Risparmia di più" Section */}
+          <div className="simulator-section mt-4 p-3.5 sm:p-4 rounded-[14px] bg-[var(--soft)] border border-[var(--hair)]">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[16px]">🚀</span>
+                <span className="text-[13px] font-extrabold text-[var(--ink)]">
+                  {t('sim_title', lang)}
+                </span>
+              </div>
+              <span className="text-[12.5px] font-bold font-mono text-[#12B5A5] bg-[#12B5A5]/10 px-2.5 py-0.5 rounded-full">
+                +{fmt(extraSavings, currency, lang)}/{t('per_month', lang)}
+              </span>
+            </div>
+            <p className="text-[11.5px] text-[var(--sub)] mb-3 leading-tight">
+              {t('sim_sub', lang)}
+            </p>
+
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-[11px] font-semibold text-[var(--sub)] font-mono">0</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="10"
+                value={extraSavings}
+                onChange={(e) => setExtraSavings(Number(e.target.value))}
+                className="w-full accent-[#12B5A5] cursor-pointer"
+              />
+              <span className="text-[11px] font-semibold text-[var(--sub)] font-mono">100</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[12px] pt-2 border-t border-[var(--hair)]">
+              <div>
+                <span className="block text-[10.5px] text-[var(--sub)] font-semibold uppercase tracking-wider mb-0.5">
+                  {t('sim_new_date', lang)}
+                </span>
+                <span className="font-bold text-[var(--ink)] font-mono">
+                  {simResult.newProj ? fdate(simResult.newProj, lang) : t('sim_no_date', lang)}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[10.5px] text-[var(--sub)] font-semibold uppercase tracking-wider mb-0.5">
+                  {t('sim_days_saved', lang)}
+                </span>
+                <span className="font-bold text-[#12B5A5] font-mono">
+                  {simResult.daysSaved > 0
+                    ? t('sim_days_val', lang).replace('{days}', String(simResult.daysSaved))
+                    : `0 ${t('days_to', lang).split(' ')[0]}`}
+                </span>
+              </div>
+            </div>
+          </div>
 
           <div className="mt-5.5">
             <div className="sec-head flex items-center justify-between gap-3 mb-1.5">

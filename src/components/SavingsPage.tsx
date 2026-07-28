@@ -1,5 +1,5 @@
 import React from 'react';
-import { ComputedMetrics, DepositItem, DepositMethod, TripData } from '../types';
+import { ComputedMetrics, DepositItem, DepositMethod, SavingsGoalItem, TripData } from '../types';
 import { METHODS } from '../constants/translations';
 import { fmt, hexa, NUM, t, today } from '../utils/calculations';
 
@@ -9,6 +9,9 @@ interface SavingsPageProps {
   onUpdateDeposit: (index: number, field: keyof DepositItem, val: any) => void;
   onDeleteDeposit: (index: number) => void;
   onAddDeposit: () => void;
+  onUpdateSavingsGoal: (index: number, field: keyof SavingsGoalItem, val: any) => void;
+  onDeleteSavingsGoal: (index: number) => void;
+  onAddSavingsGoal: () => void;
   onShowTip: (el: HTMLElement, tipText: string) => void;
 }
 
@@ -18,11 +21,15 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
   onUpdateDeposit,
   onDeleteDeposit,
   onAddDeposit,
+  onUpdateSavingsGoal,
+  onDeleteSavingsGoal,
+  onAddSavingsGoal,
   onShowTip,
 }) => {
   const lang = state.lang;
   const currency = state.currency;
   const multi = state.contributors.length > 1;
+  const goals = state.savingsGoals || [];
 
   // Render 26-week activity heatmap
   const renderHeatmap = () => {
@@ -168,6 +175,136 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
             {t('st_pace', lang)}
           </div>
         </div>
+      </div>
+
+      {/* Milestones Section */}
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[20px_22px] mb-5">
+        <div className="sec-head mb-3">
+          <h3 className="text-[15px] font-extrabold">{t('milestones_title', lang)}</h3>
+          <div className="text-[12.5px] text-[var(--sub)]">{t('milestones_sub', lang)}</div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { pctVal: 0.25, key: 'ms_25', icon: '🌱' },
+            { pctVal: 0.50, key: 'ms_50', icon: '⚡' },
+            { pctVal: 0.75, key: 'ms_75', icon: '🚀' },
+            { pctVal: 1.00, key: 'ms_100', icon: '🏆' },
+          ].map(({ pctVal, key, icon }) => {
+            const isUnlocked = d.progress >= pctVal;
+            const targetAmount = d.total * pctVal;
+            return (
+              <div
+                key={key}
+                className={`p-3.5 rounded-[14px] border transition-all ${
+                  isUnlocked
+                    ? 'bg-[var(--soft)] border-[#12B5A5]/40 shadow-xs'
+                    : 'bg-[var(--soft)]/40 border-[var(--hair)] opacity-60'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[20px]">{icon}</span>
+                  <span
+                    className={`text-[10.5px] font-extrabold px-2 py-0.5 rounded-full ${
+                      isUnlocked
+                        ? 'bg-[#12B5A5]/15 text-[#12B5A5]'
+                        : 'bg-[var(--line)] text-[var(--sub)]'
+                    }`}
+                  >
+                    {isUnlocked ? t('ms_unlocked', lang) : t('ms_locked', lang)}
+                  </span>
+                </div>
+                <div className="text-[13px] font-bold text-[var(--ink)]">
+                  {t(key, lang)}
+                </div>
+                <div className="text-[11px] font-mono font-medium text-[var(--sub)] mt-0.5">
+                  {fmt(targetAmount, currency, lang)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Savings Sub-goals Section */}
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[20px_22px] mb-5">
+        <div className="sec-head mb-3">
+          <h3 className="text-[15px] font-extrabold">{t('goals_title', lang)}</h3>
+          <div className="text-[12.5px] text-[var(--sub)]">{t('goals_sub', lang)}</div>
+        </div>
+
+        {goals.length ? (
+          <div className="space-y-3">
+            {goals.map((g, i) => {
+              const target = NUM(g.targetAmount);
+              const currentReached = Math.min(d.saved, target);
+              const pctVal = target > 0 ? Math.min(100, Math.round((d.saved / target) * 100)) : 0;
+              const isCompleted = target > 0 && d.saved >= target;
+
+              return (
+                <div
+                  key={g.id || i}
+                  className="p-3 sm:p-3.5 rounded-[14px] bg-[var(--soft)] border border-[var(--hair)] flex flex-col gap-2"
+                >
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="text"
+                      value={g.label}
+                      onChange={(e) => onUpdateSavingsGoal(i, 'label', e.target.value)}
+                      placeholder={t('goal_label_ph', lang)}
+                      className="flex-1 border border-transparent bg-transparent rounded-lg p-[6px_8px] text-[13.5px] font-bold text-[var(--ink)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none"
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={g.targetAmount}
+                        onChange={(e) => onUpdateSavingsGoal(i, 'targetAmount', e.target.value)}
+                        placeholder={t('goal_target_ph', lang)}
+                        className="amt num w-28 text-right font-mono font-bold border border-transparent bg-transparent rounded-lg p-[6px_8px] text-[13.5px] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none"
+                      />
+                      <button
+                        onClick={() => onDeleteSavingsGoal(i)}
+                        className="del border-none bg-transparent text-[var(--muted)] text-[16px] w-[28px] h-[28px] rounded-lg hover:bg-[rgba(214,72,59,0.1)] hover:text-[var(--red)] cursor-pointer transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="pt-1">
+                    <div className="flex items-center justify-between text-[11.5px] font-semibold mb-1">
+                      <span className="text-[var(--sub)] font-mono">
+                        {fmt(currentReached, currency, lang)} / {fmt(target, currency, lang)}
+                      </span>
+                      <span className={`font-mono ${isCompleted ? 'text-[#12B5A5] font-bold' : 'text-[var(--sub)]'}`}>
+                        {pctVal}% {isCompleted ? '✓' : ''}
+                      </span>
+                    </div>
+                    <div className="w-full bg-[var(--line)] rounded-full h-[7px] overflow-hidden">
+                      <div
+                        className="bg-[#12B5A5] h-full rounded-full transition-all duration-300"
+                        style={{ width: `${pctVal}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty text-center py-5 px-4 text-[var(--sub)] text-[13px] bg-[var(--soft)]/50 rounded-[14px] border border-dashed border-[var(--line)]">
+            {t('empty_goals', lang)}
+          </div>
+        )}
+
+        <button
+          onClick={onAddSavingsGoal}
+          className="add-row inline-flex items-center gap-[8px] border border-dashed border-[var(--line)] bg-transparent text-[var(--horizon-deep)] rounded-[11px] p-[9px_14px] text-[13px] font-bold mt-3 hover:border-[var(--horizon)] hover:bg-[var(--soft)] cursor-pointer transition-colors"
+        >
+          ＋ {t('add_goal', lang)}
+        </button>
       </div>
 
       {/* Activity Heatmap Card */}

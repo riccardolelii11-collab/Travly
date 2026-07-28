@@ -10,7 +10,7 @@ interface BudgetPageProps {
   onUpdateCategoryAmount: (index: number, val: string) => void;
   onDeleteCategory: (index: number) => void;
   onAddCategory: () => void;
-  onToggleReserve: () => void;
+  onUpdateReserve: (val: number) => void;
   onShowTip: (el: HTMLElement, tipText: string) => void;
 }
 
@@ -21,11 +21,13 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
   onUpdateCategoryAmount,
   onDeleteCategory,
   onAddCategory,
-  onToggleReserve,
+  onUpdateReserve,
   onShowTip,
 }) => {
   const lang = state.lang;
   const currency = state.currency;
+  const reservePct = typeof state.reserve === 'number' ? state.reserve : (state.reserve ? 15 : 0);
+  const reserveAmount = (d.baseTotal * reservePct) / 100;
 
   return (
     <div className="space-y-5">
@@ -129,8 +131,8 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
           ＋ {t('add_cat', lang)}
         </button>
 
-        {/* Contingency Reserve Toggle */}
-        <div className="toggle-row flex items-center justify-between gap-[14px] bg-[var(--soft)] border border-[var(--hair)] rounded-[14px] p-[14px_18px] mt-[16px]">
+        {/* Contingency Reserve Control */}
+        <div className="toggle-row flex flex-col sm:flex-row sm:items-center justify-between gap-[14px] bg-[var(--soft)] border border-[var(--hair)] rounded-[14px] p-[14px_18px] mt-[16px]">
           <div>
             <div className="tt text-[14px] font-bold flex items-center gap-1.5">
               <span>{t('reserve_t', lang)}</span>
@@ -147,28 +149,59 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
             <div className="ts text-[12px] text-[var(--sub)] mt-[2px]">
               {t('reserve_s', lang)}
             </div>
+            <div className="text-[11.5px] font-bold text-[#12B5A5] mt-[3px]">
+              💡 {t('reserve_rec', lang)}
+            </div>
           </div>
 
-          <button
-            onClick={onToggleReserve}
-            className={`tg w-[48px] h-[27px] rounded-full border-none relative flex-none transition-colors duration-200 cursor-pointer ${
-              state.reserve ? 'bg-[#12B5A5]' : 'bg-[var(--line)]'
-            }`}
-          >
-            <span
-              className={`knob absolute top-[3px] w-[21px] h-[21px] rounded-full bg-white shadow-md transition-all duration-200 ${
-                state.reserve ? 'left-[24px]' : 'left-[3px]'
-              }`}
-            />
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <div className="flex items-center gap-1 bg-[var(--card)] border border-[var(--line)] rounded-xl p-1 shadow-xs">
+              {[0, 5, 10, 15, 20].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => onUpdateReserve(preset)}
+                  className={`px-2.5 py-1 text-[12px] font-mono font-bold rounded-lg transition-colors cursor-pointer ${
+                    reservePct === preset
+                      ? 'bg-[#12B5A5] text-white shadow-xs'
+                      : 'text-[var(--sub)] hover:text-[var(--ink)]'
+                  }`}
+                >
+                  {preset}%
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1 border border-[var(--line)] bg-[var(--card)] rounded-xl px-2.5 py-1">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={reservePct}
+                onChange={(e) => {
+                  const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                  onUpdateReserve(val);
+                }}
+                className="w-12 text-right font-mono font-bold text-[13px] bg-transparent outline-none text-[var(--ink)]"
+              />
+              <span className="text-[13px] font-mono font-bold text-[var(--sub)]">%</span>
+            </div>
+          </div>
         </div>
 
         {/* Total Cost Summary */}
-        <div className="tfoot flex justify-between items-center mt-[16px] pt-[16px] border-t-2 border-[var(--hair)]">
-          <div className="lab text-[13px] font-bold text-[var(--sub)]">
-            {t('total', lang)}
+        <div className="tfoot flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-[16px] pt-[16px] border-t-2 border-[var(--hair)]">
+          <div>
+            <div className="lab text-[13px] font-bold text-[var(--sub)]">
+              {t('total', lang)}
+            </div>
+            {reservePct > 0 && (
+              <div className="text-[12px] font-mono text-[var(--sub)] mt-0.5">
+                {fmt(d.baseTotal, currency, lang)} + {reservePct}% {t('reserve_t', lang).toLowerCase()} ({fmt(reserveAmount, currency, lang)})
+              </div>
+            )}
           </div>
-          <div className="tot num text-[24px] font-bold font-mono tracking-tight">
+          <div className="tot num text-[24px] font-bold font-mono tracking-tight text-[var(--ink)]">
             {fmt(d.total, currency, lang)}
           </div>
         </div>

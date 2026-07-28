@@ -28,7 +28,9 @@ import { BudgetPage } from './components/BudgetPage';
 import { SavingsPage } from './components/SavingsPage';
 import { TeamPage } from './components/TeamPage';
 import { TripExpensesPage } from './components/TripExpensesPage';
-import { WelcomeModal } from './components/WelcomeModal';
+import { TravelModePage } from './components/TravelModePage';
+import { TripReportModal } from './components/TripReportModal';
+import { OnboardingResult, WelcomeModal } from './components/WelcomeModal';
 import { CurrencyModal } from './components/CurrencyModal';
 import { TooltipBox } from './components/TooltipBox';
 import { SupabaseModal } from './components/SupabaseModal';
@@ -60,7 +62,14 @@ function normalizeTripData(st: any): TripData {
       ? st.contributors
       : [{ name: 'Tu', share: '100' }];
   const savings = Array.isArray(st.savings) ? st.savings : [];
-  const expenses = Array.isArray(st.expenses) ? st.expenses : [];
+  const rawExpenses = Array.isArray(st.expenses) ? st.expenses : [];
+  const expenses = rawExpenses.map((e: any) => ({
+    ...e,
+    paid: e.paid ?? '0',
+    dueDate: e.dueDate ?? '',
+    bookingStatus: e.bookingStatus ?? 'to_search',
+  }));
+  const savingsGoals = Array.isArray(st.savingsGoals) ? st.savingsGoals : [];
   const currency: Currency =
     RATES[st.currency as Currency] != null ? st.currency : 'EUR';
 
@@ -68,19 +77,31 @@ function normalizeTripData(st: any): TripData {
     if (s.who == null) s.who = 0;
   });
 
+  let reserve = 0;
+  if (typeof st.reserve === 'boolean') {
+    reserve = st.reserve ? 15 : 0;
+  } else if (typeof st.reserve === 'number') {
+    reserve = isNaN(st.reserve) ? 0 : Math.max(0, st.reserve);
+  } else if (st.reserve != null) {
+    const parsed = parseFloat(String(st.reserve));
+    reserve = isNaN(parsed) ? 0 : Math.max(0, parsed);
+  }
+
   return {
     page,
     lang: st.lang || 'it',
     currency,
     theme: st.theme || 'light',
-    reserve: !!st.reserve,
+    reserve,
     destination: st.destination || '',
     departure: st.departure || '',
+    returnDate: st.returnDate || '',
     tripLabel: st.tripLabel,
     contributors,
     budget: Array.isArray(st.budget) ? st.budget : CATS.map((key) => ({ key, amount: '' })),
     savings,
     expenses,
+    savingsGoals,
   };
 }
 
@@ -136,6 +157,7 @@ export default function App() {
   const isNewClient = !db.seen && !storedAcc;
   const [welcomeOpen, setWelcomeOpen] = useState<boolean>(isNewClient);
   const [supabaseOpen, setSupabaseOpen] = useState<boolean>(false);
+  const [reportOpen, setReportOpen] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<
     'idle' | 'syncing' | 'saved' | 'error' | 'unconfigured'
   >('idle');
@@ -573,10 +595,33 @@ export default function App() {
     }
   };
 
-  const handleStartMyTrip = () => {
-    const blankData = normalizeTripData(getBlankData(state));
+  const handleStartMyTrip = (res: OnboardingResult) => {
+    const baseData = normalizeTripData(getBlankData(state));
+
+    if (res.destination) {
+      baseData.destination = res.destination;
+    }
+    if (res.departure) {
+      baseData.departure = res.departure;
+    }
+    if (res.returnDate) {
+      baseData.returnDate = res.returnDate;
+    }
+    if (res.contributors && res.contributors.length > 0) {
+      baseData.contributors = res.contributors.map((c) => ({
+        name: c.name,
+        share: String(c.sharePct),
+      }));
+    }
+    if (res.budgetAllocations && res.budgetAllocations.length > 0) {
+      baseData.budget = res.budgetAllocations.map((b) => ({
+        key: b.key,
+        amount: b.amount ? String(b.amount) : '',
+      }));
+    }
+
     saveDb({ ...db, hideCk: false, seen: true });
-    updateActiveTripData(() => blankData);
+    updateActiveTripData(() => baseData);
     setWelcomeOpen(false);
   };
 
@@ -639,6 +684,7 @@ export default function App() {
           onRestore={handleRestore}
           onExportCSV={handleExportCSV}
           onPrint={handlePrint}
+          onOpenReport={() => setReportOpen(true)}
           onLoadExample={handleLoadExample}
           onHelp={() => setWelcomeOpen(true)}
           onClear={handleClear}
@@ -706,10 +752,10 @@ export default function App() {
                   ],
                 }))
               }
-              onToggleReserve={() =>
+              onUpdateReserve={(val) =>
                 updateActiveTripData((prev) => ({
                   ...prev,
-                  reserve: !prev.reserve,
+                  reserve: val,
                 }))
               }
               onShowTip={handleShowTip}
@@ -745,6 +791,33 @@ export default function App() {
                       method: 'auto',
                       note: '',
                       who: 0,
+                    },
+                  ],
+                }))
+              }
+              onUpdateSavingsGoal={(idx, field, val) =>
+                updateActiveTripData((prev) => {
+                  const savingsGoals = [...(prev.savingsGoals || [])];
+                  savingsGoals[idx] = { ...savingsGoals[idx], [field]: val };
+                  return { ...prev, savingsGoals };
+                })
+              }
+              onDeleteSavingsGoal={(idx) =>
+                updateActiveTripData((prev) => {
+                  const savingsGoals = [...(prev.savingsGoals || [])];
+                  savingsGoals.splice(idx, 1);
+                  return { ...prev, savingsGoals };
+                })
+              }
+              onAddSavingsGoal={() =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  savingsGoals: [
+                    ...(prev.savingsGoals || []),
+                    {
+                      id: 'sg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+                      label: '',
+                      targetAmount: '',
                     },
                   ],
                 }))
@@ -820,16 +893,73 @@ export default function App() {
                       desc: '',
                       budgeted: '',
                       actual: '',
+                      paid: '0',
+                      dueDate: '',
+                      bookingStatus: 'to_search',
                     },
                   ],
                 }))
               }
             />
           )}
+
+          {state.page === 'travel' && (
+            <TravelModePage
+              state={state}
+              metrics={metrics}
+              onUpdateReturnDate={(val) =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  returnDate: val,
+                }))
+              }
+              onAddExpense={() =>
+                updateActiveTripData((prev) => ({
+                  ...prev,
+                  expenses: [
+                    ...prev.expenses,
+                    {
+                      date: today(),
+                      cat: 'food',
+                      desc: '',
+                      budgeted: '',
+                      actual: '',
+                      paid: '0',
+                      dueDate: '',
+                      bookingStatus: 'to_search',
+                    },
+                  ],
+                }))
+              }
+              onUpdateExpense={(idx, field, val) =>
+                updateActiveTripData((prev) => {
+                  const expenses = [...prev.expenses];
+                  expenses[idx] = { ...expenses[idx], [field]: val };
+                  return { ...prev, expenses };
+                })
+              }
+              onDeleteExpense={(idx) =>
+                updateActiveTripData((prev) => {
+                  const expenses = [...prev.expenses];
+                  expenses.splice(idx, 1);
+                  return { ...prev, expenses };
+                })
+              }
+              onOpenReport={() => setReportOpen(true)}
+            />
+          )}
         </div>
       </main>
 
       {/* Modals & Overlay Tooltips */}
+      {reportOpen && (
+        <TripReportModal
+          state={state}
+          metrics={metrics}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
+
       <WelcomeModal
         isOpen={welcomeOpen}
         lang={state.lang}

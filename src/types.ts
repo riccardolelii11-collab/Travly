@@ -1,6 +1,6 @@
 export type Language = 'it' | 'en';
 export type Currency = 'EUR' | 'USD' | 'GBP' | 'CHF' | 'JPY' | 'CAD' | 'AUD';
-export type Page = 'overview' | 'budget' | 'savings' | 'trip' | 'team';
+export type Page = 'overview' | 'budget' | 'savings' | 'trip' | 'team' | 'travel';
 export type DepositMethod = 'auto' | 'manual' | 'cashback' | 'cash';
 export type Theme = 'light' | 'dark';
 
@@ -23,12 +23,23 @@ export interface ContributorItem {
   share: string;
 }
 
+export type BookingStatus = 'to_search' | 'evaluating' | 'to_book' | 'booked' | 'paid';
+
 export interface ExpenseItem {
   date: string;
   cat: string;
   desc: string;
   budgeted: string;
   actual: string;
+  paid?: string;
+  dueDate?: string;
+  bookingStatus?: BookingStatus;
+}
+
+export interface SavingsGoalItem {
+  id: string;
+  label: string;
+  targetAmount: string;
 }
 
 export interface TripData {
@@ -36,14 +47,16 @@ export interface TripData {
   lang: Language;
   currency: Currency;
   theme: Theme;
-  reserve: boolean;
+  reserve: number;
   destination: string;
   departure: string;
+  returnDate?: string;
   tripLabel?: string;
   contributors: ContributorItem[];
   budget: CategoryItem[];
   savings: DepositItem[];
   expenses: ExpenseItem[];
+  savingsGoals?: SavingsGoalItem[];
 }
 
 export interface Trip {
@@ -79,4 +92,20 @@ export interface ComputedMetrics {
   monthsTracked: number;
   proj: Date | null;
   status: 'ontrack' | 'behind' | 'done' | 'nodate';
+}
+
+export interface BudgetInsight {
+  type: 'warning' | 'success' | 'info';
+  textKey: string;
+  params?: Record<string, string>;
+}
+
+export interface TripReportData {
+  initialBudget: number;
+  totalSpent: number;
+  difference: number;
+  mostExpensiveCategory: { key: string; name: string; amount: number } | null;
+  avgDailySpend: number;
+  totalTripDays: number;
+  isTripEnded: boolean;
 }

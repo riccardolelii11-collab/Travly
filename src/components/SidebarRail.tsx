@@ -35,9 +35,10 @@ const NAV_ICONS: Record<Page, React.ReactNode> = {
       <path d="M15.5 14.6c3 .1 5.4 2.2 5.4 5.3" />
     </svg>
   ),
+  travel: <span className="text-base opacity-90">🧳</span>,
 };
 
-const PAGES_LIST: Page[] = ['overview', 'budget', 'savings', 'trip', 'team'];
+const BASE_PAGES_LIST: Page[] = ['overview', 'budget', 'savings', 'trip', 'team'];
 
 export const SidebarRail: React.FC<SidebarRailProps> = ({
   activePage,
@@ -48,6 +49,12 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
   onToggleTheme,
 }) => {
   const dl = daysLeft(departure);
+  const isTravelActive = dl != null && dl <= 0;
+
+  const pagesList: Page[] = [...BASE_PAGES_LIST];
+  if (isTravelActive || activePage === 'travel') {
+    pagesList.push('travel');
+  }
 
   return (
     <aside className="rail sticky top-0 self-start flex-none w-[236px] h-screen bg-gradient-to-b from-[#0B1B3A] to-[#0E2A50] flex flex-col p-[22px_16px] gap-[6px] text-white z-40 max-lg:w-full max-lg:h-auto max-lg:flex-row max-lg:align-center max-lg:overflow-x-auto max-lg:p-3">
@@ -66,7 +73,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
 
       {/* Nav items */}
       <nav className="nav flex flex-col gap-[3px] max-lg:flex-row max-lg:gap-[6px]">
-        {PAGES_LIST.map((p) => {
+        {pagesList.map((p) => {
           const isActive = activePage === p;
           return (
             <button
