@@ -73,8 +73,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
 
   return (
     <>
-      {/* Mobile / Tablet Top Header (< lg) - Clean without hamburger menu */}
-      <div className="lg:hidden sticky top-0 z-40 bg-gradient-to-r from-[#0B1B3A] via-[#0E2A50] to-[#0B1B3A] text-white px-3.5 py-2.5 flex items-center justify-between border-b border-white/10 shadow-md">
+      {/* Mobile Top Header (< md) - Clean without hamburger menu */}
+      <div className="md:hidden sticky top-0 z-40 bg-gradient-to-r from-[#0B1B3A] via-[#0E2A50] to-[#0B1B3A] text-white px-3.5 py-2.5 flex items-center justify-between border-b border-white/10 shadow-md">
         <div className="flex items-center gap-2" onClick={() => onSelectPage('overview')}>
           <div className="w-[30px] h-[30px] rounded-[9px] bg-[#12B5A5] grid place-items-center text-[#062420] font-extrabold text-[15px] shadow-[0_4px_12px_rgba(18,181,165,0.4)]">
             ✦
@@ -104,8 +104,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         </div>
       </div>
 
-      {/* Desktop Navigation Sidebar (>= lg) */}
-      <aside className="hidden lg:flex sticky top-0 self-start flex-none w-[236px] h-screen bg-gradient-to-b from-[#0B1B3A] to-[#0E2A50] flex-col p-[22px_16px] gap-[6px] text-white z-40">
+      {/* Desktop & Tablet Left Navigation Sidebar (>= md) */}
+      <aside className="hidden md:flex sticky top-0 self-start flex-none w-[210px] lg:w-[236px] h-screen bg-gradient-to-b from-[#0B1B3A] to-[#0E2A50] border-r border-white/10 flex-col p-[22px_14px] lg:p-[22px_16px] gap-[6px] text-white z-40 shadow-lg">
         {/* Brand Header */}
         <div className="brand flex items-center gap-[11px] p-[6px_8px_22px]">
           <div className="mark w-[36px] h-[36px] rounded-[11px] bg-[#12B5A5] grid place-items-center text-[#062420] font-extrabold text-[18px] shadow-[0_6px_18px_rgba(18,181,165,0.4)]">
@@ -127,12 +127,16 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
               <button
                 key={p}
                 onClick={() => onSelectPage(p)}
-                className={`flex items-center gap-[12px] w-full text-left border-none bg-transparent rounded-[11px] p-[11px_12px] text-[14px] transition-colors duration-150 cursor-pointer ${
+                className={`relative flex items-center gap-[12px] w-full text-left border-none bg-transparent rounded-[11px] p-[11px_12px] text-[14px] transition-all duration-150 cursor-pointer ${
                   isActive
                     ? 'bg-white/10 text-white font-bold [&>span:first-child]:text-[#12B5A5]'
                     : 'text-[#9FB1CE] font-semibold hover:bg-white/[0.06] hover:text-white'
                 }`}
               >
+                {/* Active vertical line indicator on the left */}
+                {isActive && (
+                  <span className="absolute -left-[14px] lg:-left-[16px] top-1/2 -translate-y-1/2 w-[4px] h-[22px] bg-[#12B5A5] rounded-r-full shadow-[0_0_10px_rgba(18,181,165,0.8)]" />
+                )}
                 <span className="w-[20px] text-center">{NAV_ICONS[p]}</span>
                 <span>{t('nav_' + p, lang)}</span>
               </button>
@@ -162,8 +166,8 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         </div>
       </aside>
 
-      {/* Mobile / Tablet Bottom Tab Navigation Bar (< lg) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B1B3A]/95 backdrop-blur-md border-t border-white/15 px-1.5 pt-1.5 pb-[max(8px,env(safe-area-inset-bottom))] flex justify-around items-center text-white shadow-[0_-4px_20px_rgba(0,0,0,0.4)]">
+      {/* Mobile Bottom Tab Navigation Bar (< md) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B1B3A]/95 backdrop-blur-md border-t border-white/15 px-1.5 pt-1.5 pb-[max(8px,env(safe-area-inset-bottom))] flex justify-around items-center text-white shadow-[0_-4px_20px_rgba(0,0,0,0.4)]">
         {pagesList.map((p) => {
           const isActive = activePage === p;
           return (
