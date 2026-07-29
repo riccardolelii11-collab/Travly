@@ -544,10 +544,11 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
       </section>
 
       {/* Secondary Cards Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[20px] mt-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] items-stretch gap-[20px] mt-5">
         {/* Action Card & Savings Growth */}
-        <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
-          <div className="action-card flex items-center gap-[20px] flex-wrap justify-between">
+        <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_20px] sm:p-[22px_24px] flex flex-col justify-between">
+          <div>
+          <div className="action-card flex items-center justify-between gap-[16px] flex-wrap">
             <div className="lead flex flex-col gap-1">
               <div className="k text-[13px] font-bold text-[var(--sub)] flex items-center gap-1.5">
                 <span>{t('action_k', lang)}</span>
@@ -561,29 +562,29 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
                   ?
                 </button>
               </div>
-              <div className="v num text-[30px] font-bold font-mono tracking-tight">
+              <div className="v num text-[26px] sm:text-[30px] font-bold font-mono tracking-tight">
                 {fmt(d.needMonth, currency, lang)}{' '}
-                <small className="text-[15px] text-[var(--sub)] font-semibold">
+                <small className="text-[14px] sm:text-[15px] text-[var(--sub)] font-semibold">
                   {t('per_month', lang)}
                 </small>
               </div>
             </div>
 
-            <div className="pace flex gap-[26px] flex-wrap">
+            <div className="pace flex gap-[20px] sm:gap-[26px] flex-wrap">
               <div className="p">
-                <div className="n num text-[18px] font-bold font-mono">
+                <div className="n num text-[17px] sm:text-[18px] font-bold font-mono">
                   {fmt(d.needWeek, currency, lang)}
                 </div>
-                <div className="l text-[11px] text-[var(--sub)] font-semibold uppercase tracking-wider">
+                <div className="l text-[10.5px] sm:text-[11px] text-[var(--sub)] font-semibold uppercase tracking-wider">
                   {t('pace_week', lang)}
                 </div>
               </div>
 
               <div className="p">
-                <div className="n num text-[18px] font-bold font-mono">
+                <div className="n num text-[17px] sm:text-[18px] font-bold font-mono">
                   {fmt(d.needDay, currency, lang)}
                 </div>
-                <div className="l text-[11px] text-[var(--sub)] font-semibold uppercase tracking-wider">
+                <div className="l text-[10.5px] sm:text-[11px] text-[var(--sub)] font-semibold uppercase tracking-wider">
                   {t('pace_day', lang)}
                 </div>
               </div>
@@ -732,14 +733,17 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
             </div>
             {renderGrowthChart()}
           </div>
+          </div>
         </div>
 
-        {/* Money Allocation Donut Card */}
-        <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
-          <div className="sec-head flex items-center justify-between gap-3 mb-3.5">
-            <h2 className="text-[15px] font-extrabold">{t('alloc_title', lang)}</h2>
+        {/* Money Allocation Donut Card - Fills full height down to the bottom */}
+        <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_20px] sm:p-[22px_24px] h-full flex flex-col justify-between min-h-[300px]">
+          <div>
+            <div className="sec-head flex items-center justify-between gap-3 mb-3.5">
+              <h2 className="text-[15px] font-extrabold">{t('alloc_title', lang)}</h2>
+            </div>
+            {renderDonutChart()}
           </div>
-          {renderDonutChart()}
         </div>
       </div>
     </div>

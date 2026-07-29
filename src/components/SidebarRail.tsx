@@ -63,7 +63,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
   onOpenReport,
   onHelp,
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dl = daysLeft(departure);
   const isTravelActive = dl != null && dl <= 0;
 
@@ -72,37 +71,18 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
     pagesList.push('travel');
   }
 
-  const handleNavClick = (p: Page) => {
-    onSelectPage(p);
-    setMobileMenuOpen(false);
-  };
-
-  const getTripName = (tr: Trip) => tr.data.destination || t('untitled', lang);
-
   return (
     <>
-      {/* Mobile / Tablet Top Header (< lg) with Hamburger Button */}
+      {/* Mobile / Tablet Top Header (< lg) - Clean without hamburger menu */}
       <div className="lg:hidden sticky top-0 z-40 bg-gradient-to-r from-[#0B1B3A] via-[#0E2A50] to-[#0B1B3A] text-white px-3.5 py-2.5 flex items-center justify-between border-b border-white/10 shadow-md">
-        <div className="flex items-center gap-2.5">
-          {/* Hamburger Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="w-[38px] h-[38px] rounded-[10px] bg-white/10 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center text-[18px] active:scale-95 transition-all cursor-pointer"
-            aria-label="Apri menu a panino"
-            title="Menu di navigazione"
-          >
-            ☰
-          </button>
-
-          <div className="flex items-center gap-2" onClick={() => handleNavClick('overview')}>
-            <div className="w-[30px] h-[30px] rounded-[9px] bg-[#12B5A5] grid place-items-center text-[#062420] font-extrabold text-[15px] shadow-[0_4px_12px_rgba(18,181,165,0.4)]">
-              ✦
-            </div>
-            <div>
-              <div className="font-extrabold text-[15px] tracking-tight leading-none">Travly</div>
-              <div className="text-[9.5px] text-[#7E93B6] font-semibold leading-tight">
-                {t('tagline', lang)}
-              </div>
+        <div className="flex items-center gap-2" onClick={() => onSelectPage('overview')}>
+          <div className="w-[30px] h-[30px] rounded-[9px] bg-[#12B5A5] grid place-items-center text-[#062420] font-extrabold text-[15px] shadow-[0_4px_12px_rgba(18,181,165,0.4)]">
+            ✦
+          </div>
+          <div>
+            <div className="font-extrabold text-[15px] tracking-tight leading-none">Travly</div>
+            <div className="text-[9.5px] text-[#7E93B6] font-semibold leading-tight">
+              {t('tagline', lang)}
             </div>
           </div>
         </div>
@@ -123,157 +103,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Mobile Drawer Slide-Over Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-
-          {/* Drawer Sidebar */}
-          <div className="relative w-[280px] max-w-[82vw] h-full bg-gradient-to-b from-[#0B1B3A] to-[#0E2A50] text-white p-5 flex flex-col justify-between shadow-2xl z-10 overflow-y-auto">
-            <div className="space-y-5">
-              {/* Drawer Top Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-[34px] h-[34px] rounded-[10px] bg-[#12B5A5] grid place-items-center text-[#062420] font-extrabold text-[16px]">
-                    ✦
-                  </div>
-                  <div>
-                    <div className="font-extrabold text-[17px] tracking-tight">Travly</div>
-                    <div className="text-[10px] text-[#7E93B6] font-semibold">
-                      {t('tagline', lang)}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-[32px] h-[32px] rounded-lg bg-white/10 hover:bg-white/20 text-white grid place-items-center text-[16px] font-bold cursor-pointer"
-                  aria-label="Chiudi menu"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Trip Switcher inside Mobile Drawer */}
-              {trips && trips.length > 0 && onSwitchTrip && (
-                <div className="space-y-1.5 pt-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#7E93B6]">
-                    Seleziona Viaggio
-                  </label>
-                  <select
-                    value={activeId}
-                    onChange={(e) => {
-                      if (e.target.value === '__new') {
-                        onNewTrip?.();
-                      } else {
-                        onSwitchTrip(e.target.value);
-                      }
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full bg-white/10 border border-white/15 rounded-xl p-2.5 text-[13px] font-bold text-white outline-none cursor-pointer"
-                  >
-                    {trips.map((x) => (
-                      <option key={x.id} value={x.id} className="bg-[#0B1B3A] text-white">
-                        {getTripName(x)}
-                      </option>
-                    ))}
-                    <option value="__new" className="bg-[#0B1B3A] text-white">
-                      ＋ {t('new_trip', lang)}
-                    </option>
-                  </select>
-                </div>
-              )}
-
-              {/* Navigation Links */}
-              <div className="space-y-1 pt-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#7E93B6] mb-1.5 px-2">
-                  Pagine
-                </div>
-                {pagesList.map((p) => {
-                  const isActive = activePage === p;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => handleNavClick(p)}
-                      className={`flex items-center gap-3 w-full text-left rounded-xl px-3 py-2.5 text-[14.5px] font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-[#12B5A5] text-[#062420] shadow-[0_4px_12px_rgba(18,181,165,0.4)]'
-                          : 'text-[#9FB1CE] hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <span className="w-5 text-center text-[16px]">{NAV_ICONS[p]}</span>
-                      <span>{t('nav_' + p, lang)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Quick Actions inside Drawer */}
-              <div className="space-y-1.5 pt-3 border-t border-white/10">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#7E93B6] px-2">
-                  Strumenti
-                </div>
-
-                {onOpenSupabase && (
-                  <button
-                    onClick={() => {
-                      onOpenSupabase();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-lg text-[13px] font-semibold text-[#3ECF8E] hover:bg-white/10 cursor-pointer"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]" />
-                    <span>Backup & Cloud Supabase</span>
-                  </button>
-                )}
-
-                {onOpenReport && (
-                  <button
-                    onClick={() => {
-                      onOpenReport();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-lg text-[13px] font-semibold text-[#9FB1CE] hover:bg-white/10 hover:text-white cursor-pointer"
-                  >
-                    <span>📊</span>
-                    <span>{t('m_report', lang)}</span>
-                  </button>
-                )}
-
-                {onHelp && (
-                  <button
-                    onClick={() => {
-                      onHelp();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-lg text-[13px] font-semibold text-[#9FB1CE] hover:bg-white/10 hover:text-white cursor-pointer"
-                  >
-                    <span>❓</span>
-                    <span>{t('help', lang)}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Drawer Footer */}
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-              <span className="text-[11px] text-[#7E93B6] font-medium">
-                {departure ? `${dl ?? 0} ${t('days_to', lang)}` : t('no_date', lang)}
-              </span>
-              <button
-                onClick={onToggleTheme}
-                className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-[12px] font-bold flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>{theme === 'dark' ? '☀ Chiaro' : '☾ Scuro'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Desktop Navigation Sidebar (>= lg) */}
       <aside className="hidden lg:flex sticky top-0 self-start flex-none w-[236px] h-screen bg-gradient-to-b from-[#0B1B3A] to-[#0E2A50] flex-col p-[22px_16px] gap-[6px] text-white z-40">
