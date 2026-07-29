@@ -106,12 +106,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               {step === 1 && t('w_step1_title', lang)}
               {step === 2 && t('w_step2_title', lang)}
               {step === 3 && t('w_step3_title', lang)}
-              {step === 4 && t('w_step4_title', lang)}
             </h3>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {[1, 2, 3, 4].map((s) => (
+            {[1, 2, 3].map((s) => (
               <div
                 key={s}
                 className={`w-7 h-7 rounded-full grid place-items-center font-bold text-[12px] transition-all ${
@@ -201,7 +200,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
           </div>
         )}
 
-        {/* STEP 3: Style Template & Budget */}
+        {/* STEP 3: Style Template, Budget & Companions */}
         {step === 3 && (
           <div className="space-y-4 animate-[fade_0.2s_ease]">
             <p className="text-[13.5px] text-[var(--sub)]">{t('w_step3_sub', lang)}</p>
@@ -225,7 +224,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
                 {lang === 'it' ? 'Modello di viaggio' : 'Trip Preset Template'}
               </label>
-              <div className="grid grid-cols-2 gap-2 max-h-[220px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto pr-1">
                 {TRIP_TEMPLATES.map((tmpl) => {
                   const isSelected = selectedTemplate === tmpl.key;
                   return (
@@ -233,96 +232,61 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                       key={tmpl.key}
                       type="button"
                       onClick={() => setSelectedTemplate(tmpl.key)}
-                      className={`p-3 rounded-[14px] border text-left transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-[14px] border text-left transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-[#12B5A5]/10 border-[#12B5A5] ring-2 ring-[#12B5A5]/20'
                           : 'bg-[var(--soft)] border-[var(--hair)] hover:border-[var(--line)]'
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-[18px]">{tmpl.icon}</span>
-                        <span className="text-[13px] font-extrabold text-[var(--ink)]">
+                        <span className="text-[16px]">{tmpl.icon}</span>
+                        <span className="text-[12.5px] font-extrabold text-[var(--ink)]">
                           {t(tmpl.titleKey, lang)}
                         </span>
                       </div>
-                      <p className="text-[11px] text-[var(--sub)] mt-1 line-clamp-2">
-                        {t(tmpl.descKey, lang)}
-                      </p>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Budget split preview */}
-            {currentBudgetNum > 0 && (
-              <div className="p-3 bg-[var(--soft)] border border-[var(--hair)] rounded-[14px] space-y-1.5">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)]">
-                  {lang === 'it' ? 'Ripartizione stimate del budget:' : 'Budget breakdown preview:'}
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
-                  {calculateAllocations()
-                    .filter((a) => a.amount > 0)
-                    .map((a) => (
-                      <div key={a.key} className="flex justify-between">
-                        <span className="text-[var(--sub)]">{catName({ key: a.key }, lang)}:</span>
-                        <span className="font-mono font-bold text-[var(--ink)]">€{a.amount}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* STEP 4: Contributors */}
-        {step === 4 && (
-          <div className="space-y-4 animate-[fade_0.2s_ease]">
-            <p className="text-[13.5px] text-[var(--sub)]">{t('w_step4_sub', lang)}</p>
-
-            <div className="space-y-2">
+            {/* Companions / Contributors */}
+            <div className="space-y-2 pt-1 border-t border-[var(--line)]">
               <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
                 {t('team_title', lang)}
               </label>
-
-              <div className="space-y-2 max-h-[180px] overflow-y-auto">
+              <div className="flex flex-wrap gap-2 items-center">
                 {contributorsList.map((cName, idx) => (
-                  <div
+                  <span
                     key={idx}
-                    className="flex items-center justify-between p-3 bg-[var(--soft)] border border-[var(--hair)] rounded-[12px]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--soft)] border border-[var(--hair)] rounded-full text-[12.5px] font-bold text-[var(--ink)]"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-full bg-[#12B5A5] text-[#06231f] text-[12px] font-extrabold grid place-items-center">
-                        {cName.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="text-[14px] font-bold text-[var(--ink)]">{cName}</span>
-                    </div>
+                    <span>{cName}</span>
                     {contributorsList.length > 1 && (
                       <button
+                        type="button"
                         onClick={() => handleRemoveContributor(idx)}
-                        className="text-[var(--muted)] hover:text-[var(--red)] font-bold text-[14px] p-1 cursor-pointer"
+                        className="text-[var(--muted)] hover:text-[var(--red)] font-bold text-[12px] ml-1 cursor-pointer"
                       >
                         ✕
                       </button>
                     )}
-                  </div>
+                  </span>
                 ))}
               </div>
-
-              {/* Add companion input */}
               <div className="flex gap-2 pt-1">
                 <input
                   type="text"
                   value={newContribName}
                   onChange={(e) => setNewContribName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddContributor()}
-                  placeholder={lang === 'it' ? 'Nome compagno (es. Marco)...' : 'Companion name (e.g. Alex)...'}
-                  className="flex-1 text-[13.5px] font-medium p-2.5 bg-[var(--card)] border border-[var(--line)] rounded-[12px] text-[var(--ink)] outline-none focus:border-[#12B5A5]"
+                  placeholder={lang === 'it' ? '+ Aggiungi compagno (es. Marco)...' : '+ Add companion...'}
+                  className="flex-1 text-[12.5px] font-medium p-2 bg-[var(--card)] border border-[var(--line)] rounded-[10px] text-[var(--ink)] outline-none focus:border-[#12B5A5]"
                 />
                 <button
                   type="button"
                   onClick={handleAddContributor}
-                  className="px-4 py-2.5 bg-[var(--soft)] border border-[var(--line)] hover:border-[#12B5A5] text-[var(--ink)] font-bold text-[13px] rounded-[12px] cursor-pointer"
+                  className="px-3 py-2 bg-[var(--soft)] border border-[var(--line)] hover:border-[#12B5A5] text-[var(--ink)] font-bold text-[12px] rounded-[10px] cursor-pointer"
                 >
                   ＋
                 </button>
@@ -354,7 +318,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
           </div>
 
           <div className="flex gap-2">
-            {step < 4 ? (
+            {step < 3 ? (
               <button
                 type="button"
                 onClick={() => setStep((s) => s + 1)}

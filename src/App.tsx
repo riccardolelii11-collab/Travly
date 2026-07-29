@@ -208,6 +208,54 @@ export default function App() {
     initSupabaseSync();
   }, [accountName]);
 
+  // Continuous Multi-Device Real-Time Syncing Across PC, Phone, and Tablet
+  useEffect(() => {
+    const activeAccount = accountName || 'main';
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    let isSubscribed = true;
+
+    const pullRemoteChanges = async () => {
+      try {
+        const remoteDb = await loadFromSupabase(activeAccount);
+        if (!isSubscribed) return;
+        if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
+          const remoteStr = JSON.stringify(remoteDb);
+          const localStr = localStorage.getItem(STORAGE_KEY);
+          if (remoteStr !== localStr) {
+            setDb(remoteDb);
+            localStorage.setItem(STORAGE_KEY, remoteStr);
+            setLastSyncedAt(new Date());
+            setSyncStatus('saved');
+          }
+        }
+      } catch (err) {
+        console.warn('Multi-device background sync note:', err);
+      }
+    };
+
+    // Auto-sync on window focus or tab becoming visible (switching between devices)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        pullRemoteChanges();
+      }
+    };
+
+    window.addEventListener('focus', pullRemoteChanges);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Periodic live polling every 5 seconds for multi-device sync
+    const interval = setInterval(pullRemoteChanges, 5000);
+
+    return () => {
+      isSubscribed = false;
+      window.removeEventListener('focus', pullRemoteChanges);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
+    };
+  }, [accountName]);
+
   // Persist to localStorage whenever database changes + sync to Supabase
   const saveDb = (updated: AppDatabase) => {
     setDb(updated);

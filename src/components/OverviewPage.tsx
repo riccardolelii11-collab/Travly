@@ -49,31 +49,6 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
     [insights, formatInsightText]
   );
 
-  const [aiSummary, setAiSummary] = React.useState<string | null>(null);
-  const [aiLoading, setAiLoading] = React.useState<boolean>(false);
-
-  React.useEffect(() => {
-    if (insightStrings.length === 0) {
-      setAiSummary(null);
-      setAiLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-    setAiLoading(true);
-
-    rephraseInsightsWithGemini(insightStrings, lang).then((res) => {
-      if (isMounted) {
-        setAiSummary(res);
-        setAiLoading(false);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [JSON.stringify(insightStrings), lang]);
-
   // Onboarding checklist steps
   const steps = [
     { k: 'ck1', done: !!(state.destination && state.departure), go: '' },
@@ -630,23 +605,6 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
               <div className="text-[12px] font-bold text-[var(--sub)] uppercase tracking-wider flex items-center gap-1.5">
                 <span>💡</span> {t('insights_title', lang)}
               </div>
-
-              {/* AI Gemini summary if available or loading */}
-              {aiLoading && (
-                <div className="p-3 rounded-[12px] bg-[var(--soft)] border border-[var(--hair)] text-[12px] font-medium text-[var(--sub)] flex items-center gap-2 animate-pulse">
-                  <span className="text-[14px]">✨</span>
-                  <span>{t('ai_generating', lang)}</span>
-                </div>
-              )}
-
-              {aiSummary && !aiLoading && (
-                <div className="p-3.5 rounded-[12px] bg-[#12B5A5]/10 border border-[#12B5A5]/30 text-[13px] font-medium text-[var(--ink)] space-y-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#12B5A5] uppercase tracking-wider">
-                    <span>✨</span> {t('ai_insight_badge', lang)}
-                  </div>
-                  <p className="leading-relaxed">{aiSummary}</p>
-                </div>
-              )}
 
               <div className="space-y-2">
                 {insights.map((ins, idx) => {

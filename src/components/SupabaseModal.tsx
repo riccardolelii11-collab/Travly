@@ -314,15 +314,15 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
             </div>
             <div>
               <h3 className="text-[16px] sm:text-[18px] font-black tracking-tight flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span>{isIt ? 'Backup & Sync Cloud Supabase' : 'Supabase Backup & Cloud Sync'}</span>
+                <span>{isIt ? 'Sync Cloud & Multi-Dispositivo' : 'Cloud & Multi-Device Sync'}</span>
                 <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#3ECF8E]/15 text-[#3ECF8E] border border-[#3ECF8E]/30">
-                  Cloud Storage
+                  Computer • Smartphone • Tablet
                 </span>
               </h3>
               <p className="text-[11.5px] sm:text-[12.5px] text-[var(--sub)]">
                 {isIt
-                  ? 'Salva, gestisci e ripristina i tuoi backup da qualsiasi dispositivo'
-                  : 'Save, manage and restore your trip backups across devices'}
+                  ? 'Sincronizzazione in tempo reale tra tutti i tuoi dispositivi'
+                  : 'Real-time synchronization across all your devices'}
               </p>
             </div>
           </div>
@@ -333,6 +333,16 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
           >
             ✕
           </button>
+        </div>
+
+        {/* Multi-Device Sync Callout Banner */}
+        <div className="mt-3 p-3 rounded-[12px] bg-[#3ECF8E]/10 border border-[#3ECF8E]/30 text-[12.5px] text-[var(--ink)] font-medium flex items-center gap-2.5">
+          <span className="text-[18px] shrink-0">📱💻</span>
+          <p className="leading-snug">
+            {isIt
+              ? 'Connetti lo stesso nome account su Computer, Smartphone e Tablet: tutte le modifiche e i risparmi si aggiorneranno in tempo reale su ogni dispositivo!'
+              : 'Connect the same account name on PC, Phone and Tablet: all changes and savings sync live in real-time!'}
+          </p>
         </div>
 
         {/* User Account Login Card */}
