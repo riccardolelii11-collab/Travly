@@ -86,8 +86,8 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
   const getTripName = (tr: Trip) => tr.data.destination || t('untitled', lang);
 
   return (
-    <header className="topbar flex items-end justify-between gap-4 flex-wrap mb-6">
-      <div className="trip-id flex items-center gap-3 flex-wrap w-full sm:w-auto">
+    <header className="topbar flex items-stretch sm:items-end justify-between gap-3 sm:gap-4 flex-wrap mb-4 sm:mb-6">
+      <div className="trip-id flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto bg-[var(--card)] sm:bg-transparent p-3.5 sm:p-0 border sm:border-0 border-[var(--line)] rounded-[16px] shadow-xs sm:shadow-none">
         {/* Trip selector dropdown */}
         <select
           value={activeId}
@@ -98,7 +98,7 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
               onSwitchTrip(e.target.value);
             }
           }}
-          className="chip trip-sel font-bold w-full sm:w-auto sm:max-w-[210px] bg-[var(--card)] border border-[var(--line)] rounded-[11px] p-[9px_12px] text-[13px] text-[var(--ink)] cursor-pointer"
+          className="chip trip-sel font-bold w-full sm:w-auto sm:max-w-[210px] bg-[var(--soft)] sm:bg-[var(--card)] border border-[var(--line)] rounded-[11px] p-[8px_12px] text-[13px] text-[var(--ink)] cursor-pointer"
         >
           {trips.map((x) => (
             <option key={x.id} value={x.id}>
@@ -111,11 +111,11 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
         <div className="divider hidden md:block w-[1px] h-[34px] bg-[var(--line)]" />
 
         {/* Editable Trip Label and Destination */}
-        <div className="field min-w-[180px] flex-1 sm:flex-initial">
+        <div className="field min-w-0 flex-1 sm:flex-initial">
           <input
             value={tripLabel}
             onChange={(e) => onUpdateTripLabel(e.target.value)}
-            className="lab-edit block text-[11px] font-bold uppercase tracking-widest text-[var(--sub)] p-[1px_4px] -ml-1 rounded-md w-full max-w-[230px] border-none bg-transparent hover:bg-[var(--soft)] focus:bg-[var(--soft)] outline-none"
+            className="lab-edit block text-[10.5px] font-bold uppercase tracking-widest text-[var(--sub)] p-[1px_4px] -ml-1 rounded-md w-full max-w-[230px] border-none bg-transparent hover:bg-[var(--soft)] focus:bg-[var(--soft)] outline-none"
             title="Modifica etichetta"
             maxLength={40}
           />
@@ -124,79 +124,82 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
             value={destination}
             onChange={(e) => onUpdateDestination(e.target.value)}
             placeholder="—"
-            className="dest text-[20px] sm:text-[24px] font-extrabold tracking-tight w-full max-w-[260px] border-none bg-transparent text-[var(--ink)] outline-none"
+            className="dest text-[18px] sm:text-[24px] font-extrabold tracking-tight w-full max-w-[260px] border-none bg-transparent text-[var(--ink)] outline-none"
           />
         </div>
 
         <div className="divider hidden md:block w-[1px] h-[34px] bg-[var(--line)]" />
 
         {/* Departure date */}
-        <div className="field">
-          <label className="block text-[11px] font-bold uppercase tracking-widest text-[var(--sub)] mb-[2px]">
+        <div className="field flex items-center justify-between sm:block pt-1 sm:pt-0 border-t border-[var(--hair)] sm:border-0">
+          <label className="block text-[10.5px] font-bold uppercase tracking-widest text-[var(--sub)] mb-[2px]">
             {t('departure', lang)}
           </label>
           <input
             type="date"
             value={departure}
             onChange={(e) => onUpdateDeparture(e.target.value)}
-            className="date num text-[14px] sm:text-[15px] font-bold font-mono border-none bg-transparent text-[var(--ink)] outline-none cursor-pointer"
+            className="date num text-[13.5px] sm:text-[15px] font-bold font-mono border border-[var(--hair)] sm:border-none bg-[var(--soft)] sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-lg sm:rounded-none text-[var(--ink)] outline-none cursor-pointer"
           />
         </div>
       </div>
 
       {/* Tools on the right */}
-      <div className="tools flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
-        {/* Currency selector */}
-        <select
-          value={currency}
-          onChange={(e) => onRequestChangeCurrency(e.target.value as Currency)}
-          className="chip border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[9px_12px] text-[13px] font-bold text-[var(--ink)] cursor-pointer hover:border-[var(--horizon)] transition-colors"
-          title="Valuta"
-        >
-          {CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-
-        {/* Language selector */}
-        <select
-          value={lang}
-          onChange={(e) => onSelectLang(e.target.value as Language)}
-          className="chip border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[9px_12px] text-[13px] font-bold text-[var(--ink)] cursor-pointer hover:border-[var(--horizon)] transition-colors"
-          title="Lingua"
-        >
-          <option value="it">IT</option>
-          <option value="en">EN</option>
-        </select>
-
-        {/* Backup & Cloud Restore button */}
-        <button
-          onClick={onOpenSupabase}
-          className="chip border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 rounded-[11px] p-[9px_13px] text-[13px] font-bold text-[#3ECF8E] hover:bg-[#3ECF8E]/20 transition-all flex items-center gap-1.5 cursor-pointer"
-          title="Gestisci e ripristina i backup salvati su Supabase"
-        >
-          <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]' : 'bg-amber-400'}`} />
-          <span className="hidden xs:inline">☁️ Backup & Cloud</span>
-          <span className="xs:hidden">☁️ Cloud</span>
-        </button>
-
-        {/* More Menu Dropdown */}
-        <div className="menu-wrap relative" ref={moreMenuRef}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMoreOpen((prev) => !prev);
-            }}
-            className="chip ghost border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[9px_12px] text-[13px] font-bold text-[var(--sub)] hover:text-[var(--ink)] hover:border-[var(--horizon)] transition-colors cursor-pointer"
-            aria-haspopup="true"
+      <div className="tools flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex items-center gap-2">
+          {/* Currency selector */}
+          <select
+            value={currency}
+            onChange={(e) => onRequestChangeCurrency(e.target.value as Currency)}
+            className="chip border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[8px_10px] text-[12.5px] sm:text-[13px] font-bold text-[var(--ink)] cursor-pointer hover:border-[var(--horizon)] transition-colors"
+            title="Valuta"
           >
-            {t('more_lbl', lang)}
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          {/* Language selector */}
+          <select
+            value={lang}
+            onChange={(e) => onSelectLang(e.target.value as Language)}
+            className="chip border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[8px_10px] text-[12.5px] sm:text-[13px] font-bold text-[var(--ink)] cursor-pointer hover:border-[var(--horizon)] transition-colors"
+            title="Lingua"
+          >
+            <option value="it">IT</option>
+            <option value="en">EN</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Backup & Cloud Restore button */}
+          <button
+            onClick={onOpenSupabase}
+            className="chip border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 rounded-[11px] p-[8px_11px] text-[12.5px] sm:text-[13px] font-bold text-[#3ECF8E] hover:bg-[#3ECF8E]/20 transition-all flex items-center gap-1.5 cursor-pointer"
+            title="Gestisci e ripristina i backup salvati su Supabase"
+          >
+            <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]' : 'bg-amber-400'}`} />
+            <span className="hidden xs:inline">☁️ Cloud</span>
+            <span className="xs:hidden">☁️</span>
           </button>
 
-          {moreOpen && (
-            <div className="menu absolute right-0 top-[calc(100%+6px)] bg-[var(--card)] border border-[var(--line)] rounded-[13px] shadow-2xl p-1.5 min-w-[208px] z-50 flex flex-col gap-[1px]">
+          {/* More Menu Dropdown */}
+          <div className="menu-wrap relative" ref={moreMenuRef}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMoreOpen((prev) => !prev);
+              }}
+              className="chip ghost border border-[var(--line)] bg-[var(--card)] rounded-[11px] p-[8px_11px] text-[12.5px] sm:text-[13px] font-bold text-[var(--sub)] hover:text-[var(--ink)] hover:border-[var(--horizon)] transition-colors cursor-pointer"
+              aria-haspopup="true"
+            >
+              {t('more_lbl', lang)}
+            </button>
+
+            {moreOpen && (
+              <div className="menu absolute right-0 top-[calc(100%+6px)] bg-[var(--card)] border border-[var(--line)] rounded-[13px] shadow-2xl p-1.5 min-w-[200px] max-w-[calc(100vw-24px)] z-50 flex flex-col gap-[1px]">
               <button
                 onClick={() => {
                   setMoreOpen(false);
@@ -328,6 +331,7 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
           />
         </div>
       </div>
+    </div>
     </header>
   );
 };

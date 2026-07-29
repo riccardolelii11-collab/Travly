@@ -430,27 +430,27 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
       )}
 
       {/* Hero Boarding Pass */}
-      <section className="hero relative overflow-hidden text-white rounded-[24px] bg-[radial-gradient(120%_140%_at_85%_-20%,_#18486f_0%,_#0B1B3A_55%,_#0B1B3A_100%)] shadow-2xl p-[30px_34px]">
+      <section className="hero relative overflow-hidden text-white rounded-[20px] sm:rounded-[24px] bg-[radial-gradient(120%_140%_at_85%_-20%,_#18486f_0%,_#0B1B3A_55%,_#0B1B3A_100%)] shadow-2xl p-4 sm:p-[30px_34px]">
         <div className="glow absolute -right-[60px] -top-[80px] w-[280px] h-[280px] rounded-full bg-[radial-gradient(circle,_rgba(18,181,165,0.5),_transparent_60%)] blur-[8px] pointer-events-none" />
 
-        <div className="hero-top flex justify-between items-start gap-5 flex-wrap relative">
+        <div className="hero-top flex justify-between items-start gap-3 sm:gap-5 flex-wrap relative">
           <div className="route-from">
-            <div className="lab text-[11px] font-bold uppercase tracking-widest text-[#8FB8E0]">
+            <div className="lab text-[10.5px] font-bold uppercase tracking-widest text-[#8FB8E0]">
               {t('from_today', lang)}
             </div>
-            <div className="val num text-[15px] font-bold mt-[3px]">
+            <div className="val num text-[14px] sm:text-[15px] font-bold mt-[2px]">
               {fdate(new Date(), lang)}
             </div>
           </div>
 
           <div className="route-to text-right">
-            <div className="lab text-[11px] font-bold uppercase tracking-widest text-[#8FB8E0]">
+            <div className="lab text-[10.5px] font-bold uppercase tracking-widest text-[#8FB8E0]">
               {tripLabelStr}
             </div>
-            <div className="val text-[22px] font-extrabold tracking-tight mt-[2px]">
+            <div className="val text-[19px] sm:text-[22px] font-extrabold tracking-tight mt-[2px] truncate max-w-[200px] sm:max-w-none">
               {state.destination || '—'}
             </div>
-            <div className="sub text-[12px] text-[#A9C4E4] font-semibold mt-[3px] font-mono">
+            <div className="sub text-[11.5px] sm:text-[12px] text-[#A9C4E4] font-semibold mt-[2px] font-mono">
               {state.departure
                 ? `${t('departs', lang)} ${fdate(new Date(state.departure + 'T00:00:00'), lang)}`
                 : '—'}
@@ -459,7 +459,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
         </div>
 
         {/* Journey Progress Line */}
-        <div className="journey relative my-[30px] mb-2 h-[46px]">
+        <div className="journey relative my-6 sm:my-[30px] mb-2 h-[46px]">
           <div className="track absolute left-[6px] right-[6px] top-[21px] h-[4px] rounded-full bg-white/15" />
           <div
             className="fill absolute left-[6px] top-[21px] h-[4px] rounded-full bg-gradient-to-r from-[#12B5A5] to-[#6fe6d6] shadow-[0_0_14px_rgba(18,181,165,0.7)] transition-all duration-700 ease-out"
@@ -467,7 +467,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
           />
           <div className="dot start absolute top-[15px] left-0 w-[16px] h-[16px] rounded-full bg-white border-[3px] border-[#12B5A5]" />
           <div
-            className="flag absolute top-[-20px] bg-[#12B5A5] text-[#062420] text-[11px] font-extrabold px-[9px] py-[3px] rounded-full whitespace-nowrap -translate-x-1/2 transition-all duration-700 ease-out"
+            className="flag absolute top-[-20px] bg-[#12B5A5] text-[#062420] text-[10.5px] font-extrabold px-[8px] py-[2px] rounded-full whitespace-nowrap -translate-x-1/2 transition-all duration-700 ease-out"
             style={{ left: posL }}
           >
             {pct(d.progress)} {t('saved_pct', lang)}
@@ -484,39 +484,39 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
         </div>
 
         {/* Hero Stats Grid */}
-        <div className="hero-stats flex gap-[34px] flex-wrap mt-[22px] relative">
-          <div className="hs flex flex-col gap-[3px]">
-            <div className="lab text-[11px] font-bold uppercase tracking-widest text-[#8FB8E0]">
+        <div className="hero-stats grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-[34px] mt-4 sm:mt-[22px] relative">
+          <div className="hs flex flex-col gap-[2px]">
+            <div className="lab text-[10.5px] font-bold uppercase tracking-widest text-[#8FB8E0]">
               {t('kpi_cost', lang)}
             </div>
-            <div className="big num text-[27px] font-bold font-mono tracking-tight">
+            <div className="big num text-[20px] sm:text-[27px] font-bold font-mono tracking-tight">
               {fmt(d.total, currency, lang)}
             </div>
           </div>
 
-          <div className="hs saved flex flex-col gap-[3px]">
-            <div className="lab text-[11px] font-bold uppercase tracking-widest text-[#8FB8E0]">
+          <div className="hs saved flex flex-col gap-[2px]">
+            <div className="lab text-[10.5px] font-bold uppercase tracking-widest text-[#8FB8E0]">
               {t('saved', lang)}
             </div>
-            <div className="big num text-[27px] font-bold font-mono tracking-tight text-[#7af0e0]">
+            <div className="big num text-[20px] sm:text-[27px] font-bold font-mono tracking-tight text-[#7af0e0]">
               {fmt(d.saved, currency, lang)}
             </div>
           </div>
 
-          <div className="hs flex flex-col gap-[3px]">
-            <div className="lab text-[11px] font-bold uppercase tracking-widest text-[#8FB8E0]">
+          <div className="hs flex flex-col gap-[2px]">
+            <div className="lab text-[10.5px] font-bold uppercase tracking-widest text-[#8FB8E0]">
               {t('remaining', lang)}
             </div>
-            <div className="big num text-[27px] font-bold font-mono tracking-tight">
+            <div className="big num text-[20px] sm:text-[27px] font-bold font-mono tracking-tight">
               {fmt(d.remaining, currency, lang)}
             </div>
           </div>
 
-          <div className="hs flex flex-col gap-[3px]">
-            <div className="lab text-[11px] font-bold uppercase tracking-widest text-[#8FB8E0]">
+          <div className="hs flex flex-col gap-[2px]">
+            <div className="lab text-[10.5px] font-bold uppercase tracking-widest text-[#8FB8E0]">
               {t('departure', lang)}
             </div>
-            <div className="big text-[19px] font-bold">{daysTxt}</div>
+            <div className="big text-[16px] sm:text-[19px] font-bold">{daysTxt}</div>
           </div>
         </div>
 

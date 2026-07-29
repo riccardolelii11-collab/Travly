@@ -641,19 +641,27 @@ export default function App() {
   };
 
   return (
-    <div className="shell flex min-h-screen bg-[var(--bg)] text-[var(--ink)] font-sans antialiased transition-colors duration-300">
-      {/* Navigation Rail */}
+    <div className="shell flex flex-col lg:flex-row min-h-screen bg-[var(--bg)] text-[var(--ink)] font-sans antialiased transition-colors duration-300 max-w-full overflow-x-hidden">
+      {/* Navigation Rail & Mobile Drawer */}
       <SidebarRail
         activePage={state.page}
         theme={state.theme}
         lang={state.lang}
         departure={state.departure}
+        trips={db.trips}
+        activeId={db.activeId}
+        onSwitchTrip={handleSwitchTrip}
+        onNewTrip={handleNewTrip}
         onSelectPage={handleSelectPage}
         onToggleTheme={handleToggleTheme}
+        onOpenSupabase={() => setSupabaseOpen(true)}
+        isSupabaseConfigured={isSupabaseConfigured}
+        onOpenReport={() => setReportOpen(true)}
+        onHelp={() => setWelcomeOpen(true)}
       />
 
       {/* Main Content Area */}
-      <main className="main flex-1 min-w-0 p-[24px_40px_72px] lg:p-[24px_40px_72px] max-lg:p-[16px_14px_100px]">
+      <main className="main flex-1 min-w-0 max-w-full overflow-x-hidden p-3 pt-3 pb-24 sm:p-5 sm:pb-24 lg:p-[24px_40px_72px]">
         <HeaderTopbar
           trips={db.trips}
           activeId={db.activeId}

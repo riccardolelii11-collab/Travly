@@ -98,37 +98,39 @@ export const TeamPage: React.FC<TeamPageProps> = ({
           return (
             <div
               key={i}
-              className="contrib flex items-center gap-[14px] py-[15px] border-b border-[var(--hair)] last:border-b-0"
+              className="contrib flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-[14px] py-3.5 border-b border-[var(--hair)] last:border-b-0"
             >
-              <div
-                className="avatar w-[42px] h-[42px] rounded-[13px] grid place-items-center text-white font-extrabold text-[16px] flex-none"
-                style={{ background: col }}
-              >
-                {initial}
-              </div>
-
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-[10px] flex-wrap">
-                  <input
-                    value={c.name}
-                    onChange={(e) =>
-                      onUpdateContributor(i, 'name', e.target.value)
-                    }
-                    placeholder={t('name_ph', lang)}
-                    className="border border-transparent bg-transparent rounded-lg text-[15px] font-bold p-[5px_7px] max-w-[170px] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none transition-colors"
-                  />
-                  <div className="share-pill flex items-center gap-[4px] bg-[var(--soft)] border border-[var(--hair)] rounded-[9px] px-[9px] py-[3px]">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="avatar w-[42px] h-[42px] rounded-[13px] grid place-items-center text-white font-extrabold text-[16px] flex-none shadow-sm"
+                    style={{ background: col }}
+                  >
+                    {initial}
+                  </div>
+
+                  <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                     <input
-                      className="num w-[40px] text-right font-mono font-bold bg-transparent outline-none"
-                      inputMode="decimal"
-                      value={c.share}
+                      value={c.name}
                       onChange={(e) =>
-                        onUpdateContributor(i, 'share', e.target.value)
+                        onUpdateContributor(i, 'name', e.target.value)
                       }
+                      placeholder={t('name_ph', lang)}
+                      className="border border-transparent bg-transparent rounded-lg text-[15px] font-bold p-[4px_6px] w-full max-w-[170px] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none transition-colors"
                     />
-                    <span className="text-[var(--sub)] font-bold text-[13px]">
-                      %
-                    </span>
+                    <div className="share-pill flex items-center gap-[4px] bg-[var(--soft)] border border-[var(--hair)] rounded-[9px] px-[9px] py-[3px]">
+                      <input
+                        className="num w-[40px] text-right font-mono font-bold bg-transparent outline-none"
+                        inputMode="decimal"
+                        value={c.share}
+                        onChange={(e) =>
+                          onUpdateContributor(i, 'share', e.target.value)
+                        }
+                      />
+                      <span className="text-[var(--sub)] font-bold text-[13px]">
+                        %
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -154,7 +156,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({
               {C.length > 1 && (
                 <button
                   onClick={() => onDeleteContributor(i)}
-                  className="del border-none bg-transparent text-[var(--muted)] text-[16px] w-[30px] h-[30px] rounded-lg hover:bg-[rgba(214,72,59,0.1)] hover:text-[var(--red)] cursor-pointer transition-colors"
+                  className="del self-end sm:self-center border-none bg-transparent text-[var(--muted)] text-[16px] w-[30px] h-[30px] rounded-lg hover:bg-[rgba(214,72,59,0.1)] hover:text-[var(--red)] cursor-pointer transition-colors"
                 >
                   ✕
                 </button>

@@ -44,7 +44,6 @@ ${insightsText.map((t: string) => `- ${t}`).join("\n")}`;
 
       const candidateModels = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
       let rephrased: string | null = null;
-      let lastErr: any = null;
 
       for (const modelName of candidateModels) {
         try {
@@ -56,15 +55,8 @@ ${insightsText.map((t: string) => `- ${t}`).join("\n")}`;
             rephrased = response.text.trim();
             break;
           }
-        } catch (err: any) {
-          lastErr = err;
-          // If rate limited or quota exceeded, try next model or break cleanly
-          const msg = String(err?.message || err);
-          if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("Quota exceeded")) {
-            console.warn(`Gemini model ${modelName} rate limited / quota exceeded. Trying fallback...`);
-          } else {
-            console.warn(`Gemini model ${modelName} error:`, msg);
-          }
+        } catch {
+          // Attempt next model silently if quota or model availability issue occurs
         }
       }
 
