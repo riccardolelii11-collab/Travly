@@ -245,14 +245,52 @@ export default function App() {
     window.addEventListener('focus', pullRemoteChanges);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Periodic live polling every 5 seconds for multi-device sync
-    const interval = setInterval(pullRemoteChanges, 5000);
+    // Real-time Supabase postgres changes channel for instantaneous multi-device updates
+    let channel: any = null;
+    try {
+      channel = client
+        .channel(`sync_live_${activeAccount}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'travly_db',
+            filter: `id=eq.${activeAccount}`,
+          },
+          (payload: any) => {
+            if (!isSubscribed) return;
+            if (payload?.new?.data) {
+              const remoteDb = payload.new.data as AppDatabase;
+              const remoteStr = JSON.stringify(remoteDb);
+              const localStr = localStorage.getItem(STORAGE_KEY);
+              if (remoteStr !== localStr) {
+                setDb(remoteDb);
+                localStorage.setItem(STORAGE_KEY, remoteStr);
+                setLastSyncedAt(new Date());
+                setSyncStatus('saved');
+              }
+            }
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      console.warn('Realtime channel subscription notice:', e);
+    }
+
+    // Fast polling fallback (every 3s) for multi-device sync
+    const interval = setInterval(pullRemoteChanges, 3000);
 
     return () => {
       isSubscribed = false;
       window.removeEventListener('focus', pullRemoteChanges);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(interval);
+      if (channel && client) {
+        try {
+          client.removeChannel(channel);
+        } catch {}
+      }
     };
   }, [accountName]);
 

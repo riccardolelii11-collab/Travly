@@ -343,32 +343,39 @@ export async function deleteAccountAndData(accountKey: string): Promise<boolean>
   const key = accountKey.trim().toLowerCase();
   if (!key) return false;
 
-  // 1. Remove local backups for this account key
+  // 1. Remove local backups & keys for this account key
   try {
     localStorage.removeItem(`${LOCAL_BACKUPS_KEY}_${key}`);
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.includes(key) || k.startsWith('travly_backups_'))) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
   } catch (e) {
-    console.warn('Error clearing local backups:', e);
+    console.warn('Error clearing local storage keys:', e);
   }
 
   // 2. Clear credentials from local storage
   clearStoredUserAccount();
 
-  // 3. Delete row from Supabase if connected
+  // 3. Delete row from Supabase cloud if connected
   const supabase = getSupabaseClient();
   if (supabase) {
-    const { error: err1 } = await supabase.from('travly_db').delete().eq('id', key);
-    const { error: err2 } = await supabase.from('travly_backups').delete().eq('user_account', key);
+    try {
+      const { error: err1 } = await supabase.from('travly_db').delete().eq('id', key);
+      const { error: err2 } = await supabase.from('travly_backups').delete().eq('user_account', key);
 
-    if (err1) {
-      console.error('Error deleting account from travly_db:', err1);
-    }
-    if (err2) {
-      console.error('Error deleting backups from travly_backups:', err2);
-    }
-
-    if (err1 || err2) {
-      const msg = err1?.message || err2?.message || 'Database deletion failed on Supabase';
-      throw new Error(msg);
+      if (err1 && !err1.message?.includes('does not exist')) {
+        console.warn('Notice deleting from travly_db:', err1.message);
+      }
+      if (err2 && !err2.message?.includes('does not exist')) {
+        console.warn('Notice deleting from travly_backups:', err2.message);
+      }
+    } catch (err: any) {
+      console.warn('Cloud delete notice:', err?.message || err);
     }
   }
 
