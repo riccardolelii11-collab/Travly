@@ -43,22 +43,28 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
       </div>
 
       <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_16px] sm:p-[22px_24px]">
-        <div className="overflow-x-auto">
-          <table className="tbl w-full border-collapse min-w-[480px]">
-          <thead>
-            <tr className="border-b border-[var(--hair)]">
-              <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
-                {t('col_cat', lang)}
-              </th>
-              <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
-                {t('col_amt', lang)}
-              </th>
-              <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
-                {t('col_share', lang)}
-              </th>
-              <th className="pb-[10px] px-[10px]" />
-            </tr>
-          </thead>
+        <div className="overflow-x-auto rounded-xl border border-[var(--hair)] bg-[var(--card)]">
+          <table className="tbl w-full border-collapse table-fixed min-w-[520px]">
+            <colgroup>
+              <col style={{ width: '220px' }} /> {/* CATEGORIA */}
+              <col style={{ width: '130px' }} /> {/* IMPORTO */}
+              <col style={{ width: '130px' }} /> {/* QUOTA */}
+              <col style={{ width: '40px' }} />  {/* AZIONI */}
+            </colgroup>
+            <thead>
+              <tr className="border-b border-[var(--line)] bg-[var(--soft)]">
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-3">
+                  {t('col_cat', lang)}
+                </th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-3">
+                  {t('col_amt', lang)}
+                </th>
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-3">
+                  {t('col_share', lang)}
+                </th>
+                <th className="py-3 px-2" />
+              </tr>
+            </thead>
           <tbody>
             {state.budget.map((c, i) => {
               const amt = NUM(c.amount);
