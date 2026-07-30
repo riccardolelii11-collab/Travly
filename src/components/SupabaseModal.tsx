@@ -1,32 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
   Database,
-  Check,
-  Copy,
   RefreshCw,
-  Server,
   AlertCircle,
-  ExternalLink,
-  ShieldCheck,
   User,
   Key,
   Download,
   Trash2,
   PlusCircle,
   LogOut,
-  ChevronDown,
-  ChevronUp,
   History,
 } from 'lucide-react';
 import { Language, AppDatabase } from '../types';
 import {
-  getSupabaseCredentials,
-  saveSupabaseCredentials,
-  getSupabaseClient,
-  SUPABASE_SQL_SCRIPT,
   getStoredUserAccount,
-  saveStoredUserAccount,
-  clearStoredUserAccount,
   fetchBackupSnapshots,
   createBackupSnapshot,
   deleteBackupSnapshot,
@@ -62,13 +49,6 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   onLogoutAccount,
   onDeleteAccount,
 }) => {
-  const [url, setUrl] = useState('');
-  const [anonKey, setAnonKey] = useState('');
-  const [copiedSql, setCopiedSql] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
-  const [testResult, setTestResult] = useState<{ success?: boolean; message?: string } | null>(null);
-  const [testing, setTesting] = useState(false);
-
   // Login form state
   const [inputAccount, setInputAccount] = useState('');
   const [inputPass, setInputPass] = useState('');
@@ -93,16 +73,11 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const creds = getSupabaseCredentials();
-      setUrl(creds.url);
-      setAnonKey(creds.anonKey);
-
       const stored = getStoredUserAccount();
       setInputAccount(stored.account || accountName || '');
       setInputPass(stored.pass || '');
       setInputPassConfirm(stored.pass || '');
 
-      setTestResult(null);
       setLoginMessage(null);
 
       if (accountName) {
@@ -238,63 +213,6 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
       await deleteBackupSnapshot(id, accKey);
       setBackups((prev) => prev.filter((b) => b.id !== id));
     }
-  };
-
-  const handleSaveCredentials = async () => {
-    saveSupabaseCredentials(url, anonKey);
-    setTestResult(null);
-    setTesting(true);
-
-    const client = getSupabaseClient();
-    if (!client) {
-      setTesting(false);
-      setTestResult({
-        success: false,
-        message: isIt
-          ? "Inserisci sia l'URL che la chiave Anon di Supabase"
-          : 'Please enter both Supabase URL and Anon Key',
-      });
-      return;
-    }
-
-    try {
-      const { error } = await client.from('travly_db').select('id').limit(1);
-      setTesting(false);
-      if (error) {
-        if (error.code === '42P01' || error.message.includes('relation "travly_db" does not exist')) {
-          setTestResult({
-            success: false,
-            message: isIt
-              ? 'Connessione a Supabase riuscita! Nota: la tabella "travly_db" non esiste ancora. Esegui lo script SQL qui sotto.'
-              : 'Connected to Supabase! Note: Table "travly_db" does not exist yet. Please run the SQL script below.',
-          });
-        } else {
-          setTestResult({
-            success: false,
-            message: `Errore Supabase: ${error.message} (${error.code || 'UNKNOWN'})`,
-          });
-        }
-      } else {
-        setTestResult({
-          success: true,
-          message: isIt
-            ? 'Connesso a Supabase con successo! La tabella travly_db è pronta.'
-            : 'Successfully connected to Supabase! Table travly_db is ready.',
-        });
-      }
-    } catch (err: any) {
-      setTesting(false);
-      setTestResult({
-        success: false,
-        message: err.message || 'Impossibile connettersi a Supabase',
-      });
-    }
-  };
-
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(SUPABASE_SQL_SCRIPT);
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2500);
   };
 
   return (
@@ -588,95 +506,6 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
               <span>{creatingBackup ? (isIt ? 'Salvataggio...' : 'Saving...') : (isIt ? 'Salva Backup' : 'Save Backup')}</span>
             </button>
           </div>
-        </div>
-
-        {/* Supabase URL & Key API Configuration Accordion */}
-        <div className="mt-3.5 border border-[var(--line)] rounded-[14px] overflow-hidden bg-[var(--card)]">
-          <button
-            type="button"
-            onClick={() => setShowConfig(!showConfig)}
-            className="w-full p-3.5 flex items-center justify-between bg-[var(--soft)] text-[13px] font-extrabold text-[var(--ink)] hover:bg-[var(--line)]/30 transition-colors cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Server className="w-4 h-4 text-[#3ECF8E]" />
-              <span>{isIt ? 'Configurazione Chiavi API Supabase (URL e Anon Key)' : 'Supabase API Keys & URL Settings'}</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11.5px] text-[var(--sub)] font-semibold">
-              <span>{showConfig ? (isIt ? 'Nascondi' : 'Hide') : (isIt ? 'Mostra / Modifica' : 'Show / Edit')}</span>
-              {showConfig ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </div>
-          </button>
-
-          {showConfig && (
-            <div className="p-3.5 sm:p-4 space-y-3.5 border-t border-[var(--line)] bg-[var(--card)]">
-              <p className="text-[12px] text-[var(--sub)] leading-relaxed">
-                {isIt
-                  ? 'Se desideri utilizzare un tuo progetto personalizzato Supabase, inserisci l\'URL del progetto e la Chiave Anonima pubblicata nelle impostazioni API del tuo progetto Supabase (Project Settings → API).'
-                  : 'If you want to use your custom Supabase project, enter your Project URL and Anon Public Key from your Supabase Dashboard.'}
-              </p>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[11.5px] font-bold text-[var(--sub)] mb-1">
-                    {isIt ? 'URL Progetto Supabase' : 'Supabase Project URL'}
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://xxxx.supabase.co"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="w-full bg-[var(--soft)] border border-[var(--line)] rounded-[9px] px-3 py-2 text-[12.5px] font-mono outline-none focus:border-[#3ECF8E]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11.5px] font-bold text-[var(--sub)] mb-1">
-                    {isIt ? 'Chiave Anonima (Anon Key)' : 'Anon / Public API Key'}
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    value={anonKey}
-                    onChange={(e) => setAnonKey(e.target.value)}
-                    className="w-full bg-[var(--soft)] border border-[var(--line)] rounded-[9px] px-3 py-2 text-[12px] font-mono outline-none focus:border-[#3ECF8E] resize-none"
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleSaveCredentials}
-                    disabled={testing}
-                    className="px-4 py-2 bg-[#3ECF8E] text-[#052316] text-[12.5px] font-extrabold rounded-[9px] hover:brightness-105 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${testing ? 'animate-spin' : ''}`} />
-                    <span>{testing ? (isIt ? 'Verifica in corso...' : 'Testing...') : (isIt ? 'Salva & Verifica Connessione' : 'Save & Test Connection')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopySql}
-                    className="px-3 py-2 bg-[var(--soft)] hover:bg-[var(--line)] text-[var(--ink)] border border-[var(--line)] text-[12px] font-bold rounded-[9px] flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#3ECF8E]" />}
-                    <span>{copiedSql ? (isIt ? 'Copiato!' : 'Copied!') : (isIt ? 'Copia Script SQL Supabase' : 'Copy Supabase SQL Script')}</span>
-                  </button>
-                </div>
-
-                {testResult && (
-                  <div
-                    className={`text-[12px] p-2.5 rounded-[9px] border ${
-                      testResult.success
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                    }`}
-                  >
-                    {testResult.message}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Download / Restore Old Backups List */}
