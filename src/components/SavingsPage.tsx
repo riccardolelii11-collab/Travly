@@ -31,7 +31,7 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
   const multi = state.contributors.length > 1;
   const goals = state.savingsGoals || [];
 
-  // Render 26-week activity heatmap
+  // Render 26-week activity heatmap with day labels and accurate local dates
   const renderHeatmap = () => {
     const dark = state.theme === 'dark';
     const accent = '#12B5A5';
@@ -70,11 +70,15 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
       for (let d2 = 0; d2 < 7; d2++) {
         const cell = new Date(lastMon);
         cell.setDate(lastMon.getDate() - w * 7 + d2);
-        const iso = cell.toISOString().slice(0, 10);
+        const y = cell.getFullYear();
+        const m = String(cell.getMonth() + 1).padStart(2, '0');
+        const cd = String(cell.getDate()).padStart(2, '0');
+        const iso = `${y}-${m}-${cd}`;
+
         const v = byDate[iso] || 0;
         const future = cell > todayD;
         const bg = future ? 'transparent' : getCol(getLvl(v));
-        const tip = iso + (v > 0 ? ' · ' + fmt(v, currency, lang) : '');
+        const tip = `${cd}/${m}/${y}` + (v > 0 ? ' · ' + fmt(v, currency, lang) : '');
 
         cells.push(
           <div
@@ -100,10 +104,19 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
       />
     ));
 
+    const dayLabels = lang === 'it' ? ['L', 'M', 'M', 'G', 'V', 'S', 'D'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
     return (
       <div>
-        <div className="heat-grid flex gap-[3px] overflow-x-auto pb-[2px]">
-          {cols}
+        <div className="flex gap-2 items-start">
+          <div className="flex flex-col gap-[3px] pt-[1px] text-[9.5px] font-bold text-[var(--sub)] leading-[13px] select-none flex-none">
+            {dayLabels.map((dl, i) => (
+              <span key={i} className="h-[13px] flex items-center justify-center">{dl}</span>
+            ))}
+          </div>
+          <div className="heat-grid flex gap-[3px] overflow-x-auto pb-[2px] flex-1">
+            {cols}
+          </div>
         </div>
         <div className="heat-legend flex items-center gap-[6px] justify-end mt-[12px] text-[11px] text-[var(--sub)] font-semibold">
           <span>{t('less', lang)}</span>
@@ -333,7 +346,15 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
       <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         {state.savings.length ? (
           <div className="overflow-x-auto">
-            <table className="tbl w-full border-collapse min-w-[540px]">
+            <table className="tbl w-full border-collapse table-fixed min-w-[560px]">
+              <colgroup>
+                <col style={{ width: '135px' }} /> {/* DATA */}
+                <col style={{ width: '125px' }} /> {/* IMPORTO */}
+                <col style={{ width: '140px' }} /> {/* METODO */}
+                {multi && <col style={{ width: '125px' }} />} {/* CHI */}
+                <col style={{ width: '175px' }} /> {/* NOTE */}
+                <col style={{ width: '40px' }} />  {/* AZIONI */}
+              </colgroup>
               <thead>
                 <tr className="border-b border-[var(--hair)]">
                   <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px] w-[130px]">

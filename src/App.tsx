@@ -61,10 +61,16 @@ function normalizeTripData(st: any): TripData {
     Array.isArray(st.contributors) && st.contributors.length
       ? st.contributors
       : [{ name: 'Tu', share: '100' }];
-  const savings = Array.isArray(st.savings) ? st.savings : [];
+  const rawSavings = Array.isArray(st.savings) ? st.savings : [];
+  const savings = rawSavings.map((s: any, i: number) => ({
+    ...s,
+    id: s.id || `dep_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 5)}`,
+    who: s.who == null ? 0 : s.who,
+  }));
   const rawExpenses = Array.isArray(st.expenses) ? st.expenses : [];
-  const expenses = rawExpenses.map((e: any) => ({
+  const expenses = rawExpenses.map((e: any, i: number) => ({
     ...e,
+    id: e.id || `exp_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 5)}`,
     paid: e.paid ?? '0',
     dueDate: e.dueDate ?? '',
     bookingStatus: e.bookingStatus ?? 'to_search',
@@ -72,10 +78,6 @@ function normalizeTripData(st: any): TripData {
   const savingsGoals = Array.isArray(st.savingsGoals) ? st.savingsGoals : [];
   const currency: Currency =
     RATES[st.currency as Currency] != null ? st.currency : 'EUR';
-
-  savings.forEach((s: any) => {
-    if (s.who == null) s.who = 0;
-  });
 
   let reserve = 0;
   if (typeof st.reserve === 'boolean') {
@@ -880,6 +882,7 @@ export default function App() {
                   savings: [
                     ...prev.savings,
                     {
+                      id: 'dep_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
                       date: today(),
                       amount: '',
                       method: 'auto',
@@ -982,6 +985,7 @@ export default function App() {
                   expenses: [
                     ...prev.expenses,
                     {
+                      id: 'exp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
                       date: today(),
                       cat: 'food',
                       desc: '',
@@ -1013,6 +1017,7 @@ export default function App() {
                   expenses: [
                     ...prev.expenses,
                     {
+                      id: 'exp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
                       date: today(),
                       cat: 'food',
                       desc: '',

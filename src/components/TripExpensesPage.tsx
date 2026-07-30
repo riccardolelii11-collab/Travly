@@ -202,7 +202,20 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
       <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         {state.expenses.length ? (
           <div className="overflow-x-auto">
-            <table className="tbl w-full border-collapse min-w-[840px]">
+            <table className="tbl w-full border-collapse table-fixed min-w-[1080px]">
+              <colgroup>
+                <col style={{ width: '125px' }} /> {/* DATA */}
+                <col style={{ width: '135px' }} /> {/* CATEGORIA */}
+                <col style={{ width: '170px' }} /> {/* DESCRIZIONE */}
+                <col style={{ width: '140px' }} /> {/* STATO */}
+                <col style={{ width: '125px' }} /> {/* SCADENZA */}
+                <col style={{ width: '95px' }} />  {/* PREVENTIVO */}
+                <col style={{ width: '95px' }} />  {/* EFFETTIVO */}
+                <col style={{ width: '95px' }} />  {/* PAGATO */}
+                <col style={{ width: '100px' }} /> {/* DA PAGARE */}
+                <col style={{ width: '85px' }} />  {/* DIFF. */}
+                <col style={{ width: '35px' }} />  {/* AZIONI */}
+              </colgroup>
               <thead>
                 <tr className="border-b border-[var(--hair)]">
                   <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px] w-[130px]">

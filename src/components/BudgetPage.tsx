@@ -44,7 +44,13 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
 
       <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         <div className="overflow-x-auto">
-          <table className="tbl w-full border-collapse min-w-[480px]">
+          <table className="tbl w-full border-collapse table-fixed min-w-[500px]">
+            <colgroup>
+              <col style={{ width: '220px' }} /> {/* CATEGORIA */}
+              <col style={{ width: '130px' }} /> {/* IMPORTO */}
+              <col style={{ width: '110px' }} /> {/* QUOTA */}
+              <col style={{ width: '40px' }} />  {/* AZIONI */}
+            </colgroup>
             <thead>
               <tr className="border-b border-[var(--hair)]">
                 <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px] w-[220px]">
