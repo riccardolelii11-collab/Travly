@@ -89,8 +89,9 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
 
         <div className="flex items-center gap-2">
           {departure && (
-            <div className="text-[10.5px] bg-white/10 px-2.5 py-1 rounded-full text-[#9FB1CE] font-medium flex items-center gap-1">
-              <span className="text-white font-bold">{dl == null ? '—' : Math.max(0, dl)}</span>
+            <div className="text-[11px] bg-white/10 px-2.5 py-1 rounded-full text-[#9FB1CE] font-medium flex items-center gap-1">
+              <span className="text-white font-bold">- {dl == null ? '—' : Math.max(0, dl)}</span>
+              <span className="xs:hidden text-white/90 font-semibold">gg</span>
               <span className="hidden xs:inline">{t('days_to', lang)}</span>
             </div>
           )}

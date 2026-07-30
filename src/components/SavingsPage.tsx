@@ -333,40 +333,32 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
       <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         {state.savings.length ? (
           <div className="overflow-x-auto">
-            <table className="tbl w-full border-collapse table-fixed min-w-[540px]">
-              <colgroup>
-                <col style={{ width: '130px' }} /> {/* DATA */}
-                <col style={{ width: '120px' }} /> {/* IMPORTO */}
-                <col style={{ width: '140px' }} /> {/* METODO */}
-                {multi && <col style={{ width: '120px' }} />} {/* CHI */}
-                <col style={{ width: '160px' }} /> {/* NOTE */}
-                <col style={{ width: '40px' }} />  {/* AZIONI */}
-              </colgroup>
+            <table className="tbl w-full border-collapse min-w-[540px]">
               <thead>
                 <tr className="border-b border-[var(--hair)]">
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px] w-[130px]">
                     {t('col_date', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px] w-[120px]">
                     {t('col_dep', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px] w-[140px]">
                     {t('col_method', lang)}
                   </th>
                   {multi && (
-                    <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
+                    <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px] w-[120px]">
                       {t('col_who', lang)}
                     </th>
                   )}
                   <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
                     {t('col_note', lang)}
                   </th>
-                  <th className="pb-[10px] px-[10px]" />
+                  <th className="pb-[10px] px-[10px] w-[40px]" />
                 </tr>
               </thead>
             <tbody>
               {state.savings.map((s, i) => (
-                <tr key={i} className="border-b border-[var(--hair)]">
+                <tr key={(s as any).id || `dep_${i}`} className="border-b border-[var(--hair)]">
                   <td className="py-[9px] px-[10px]">
                     <input
                       type="date"

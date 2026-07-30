@@ -202,53 +202,40 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
       <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         {state.expenses.length ? (
           <div className="overflow-x-auto">
-            <table className="tbl w-full border-collapse table-fixed min-w-[840px]">
-              <colgroup>
-                <col style={{ width: '130px' }} /> {/* DATA */}
-                <col style={{ width: '130px' }} /> {/* CATEGORIA */}
-                <col style={{ width: '160px' }} /> {/* DESCRIZIONE */}
-                <col style={{ width: '135px' }} /> {/* STATO */}
-                <col style={{ width: '130px' }} /> {/* SCADENZA */}
-                <col style={{ width: '90px' }} />  {/* PREVENTIVO */}
-                <col style={{ width: '90px' }} />  {/* EFFETTIVO */}
-                <col style={{ width: '90px' }} />  {/* PAGATO */}
-                <col style={{ width: '95px' }} />  {/* DA PAGARE */}
-                <col style={{ width: '85px' }} />  {/* DIFF. */}
-                <col style={{ width: '35px' }} />  {/* AZIONI */}
-              </colgroup>
+            <table className="tbl w-full border-collapse min-w-[840px]">
               <thead>
                 <tr className="border-b border-[var(--hair)]">
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px] w-[130px]">
                     {t('col_date', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px] w-[130px]">
                     {t('col_cat', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px] w-[160px]">
                     {t('col_desc', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px] w-[135px]">
                     {t('col_booking_status', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px] w-[130px]">
                     {t('col_due_date', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px] w-[90px]">
                     {t('col_budgeted', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px] w-[90px]">
                     {t('col_actual', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px] w-[90px]">
                     {t('col_paid', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px] w-[95px]">
                     {t('col_to_pay', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px] w-[85px]">
                     {t('col_diff', lang)}
                   </th>
-                  <th className="pb-[10px] px-[8px]" />
+                  <th className="pb-[10px] px-[8px] w-[35px]" />
                 </tr>
               </thead>
               <tbody>
@@ -261,7 +248,7 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
 
                   return (
                     <tr
-                      key={i}
+                      key={(e as any).id || `exp_${i}`}
                       className={`border-b border-[var(--hair)] ${
                         isOver ? 'bg-[rgba(214,72,59,0.06)]' : ''
                       }`}

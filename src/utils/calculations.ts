@@ -2,7 +2,9 @@ import { CATS, T } from '../constants/translations';
 import { BudgetInsight, ComputedMetrics, Currency, Language, TripData, TripReportData } from '../types';
 
 export const NUM = (x: unknown): number => {
-  const n = parseFloat(String(x));
+  if (x == null || x === '') return 0;
+  const str = String(x).replace(',', '.');
+  const n = parseFloat(str);
   return isNaN(n) ? 0 : n;
 };
 

@@ -44,25 +44,19 @@ export const BudgetPage: React.FC<BudgetPageProps> = ({
 
       <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         <div className="overflow-x-auto">
-          <table className="tbl w-full border-collapse table-fixed min-w-[480px]">
-            <colgroup>
-              <col style={{ width: '220px' }} /> {/* CATEGORIA */}
-              <col style={{ width: '130px' }} /> {/* IMPORTO */}
-              <col style={{ width: '130px' }} /> {/* QUOTA */}
-              <col style={{ width: '40px' }} />  {/* AZIONI */}
-            </colgroup>
+          <table className="tbl w-full border-collapse min-w-[480px]">
             <thead>
               <tr className="border-b border-[var(--hair)]">
-                <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px] w-[220px]">
                   {t('col_cat', lang)}
                 </th>
-                <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
+                <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px] w-[130px]">
                   {t('col_amt', lang)}
                 </th>
                 <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
                   {t('col_share', lang)}
                 </th>
-                <th className="pb-[10px] px-[10px]" />
+                <th className="pb-[10px] px-[10px] w-[40px]" />
               </tr>
             </thead>
           <tbody>
