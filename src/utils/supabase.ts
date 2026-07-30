@@ -43,6 +43,9 @@ export function clearStoredUserAccount() {
   localStorage.removeItem(STORAGE_USER_PASS_KEY);
 }
 
+const DEFAULT_SUPABASE_URL = 'https://pmuopkpjshwhenrmxuez.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_iI0Cm1qwYDx8PVsgsMlk2A_D4AZQnSH';
+
 export function getSupabaseCredentials() {
   const envUrl = import.meta.env.VITE_SUPABASE_URL;
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -50,31 +53,48 @@ export function getSupabaseCredentials() {
   const localUrl = localStorage.getItem(STORAGE_URL_KEY) || '';
   const localKey = localStorage.getItem(STORAGE_ANON_KEY) || '';
 
-  const url = (localUrl || envUrl || '').trim();
-  const anonKey = (localKey || envKey || '').trim();
+  let rawUrl = (localUrl || envUrl || DEFAULT_SUPABASE_URL).trim();
+  let anonKey = (localKey || envKey || DEFAULT_SUPABASE_ANON_KEY).trim();
 
-  if (url) {
+  if (rawUrl.includes('/rest/v1')) {
+    rawUrl = rawUrl.split('/rest/v1')[0];
+  }
+  rawUrl = rawUrl.replace(/\/+$/, '');
+
+  if (rawUrl) {
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(rawUrl);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        return { url: '', anonKey: '' };
+        rawUrl = DEFAULT_SUPABASE_URL;
       }
     } catch {
-      return { url: '', anonKey: '' };
+      rawUrl = DEFAULT_SUPABASE_URL;
     }
+  } else {
+    rawUrl = DEFAULT_SUPABASE_URL;
   }
 
-  return { url, anonKey };
+  if (!anonKey) {
+    anonKey = DEFAULT_SUPABASE_ANON_KEY;
+  }
+
+  return { url: rawUrl, anonKey };
 }
 
 export function saveSupabaseCredentials(url: string, anonKey: string) {
-  if (url) {
-    localStorage.setItem(STORAGE_URL_KEY, url.trim());
+  let cleanUrl = url.trim();
+  if (cleanUrl.includes('/rest/v1')) {
+    cleanUrl = cleanUrl.split('/rest/v1')[0];
+  }
+  cleanUrl = cleanUrl.replace(/\/+$/, '');
+
+  if (cleanUrl) {
+    localStorage.setItem(STORAGE_URL_KEY, cleanUrl);
   } else {
     localStorage.removeItem(STORAGE_URL_KEY);
   }
 
-  if (anonKey) {
+  if (anonKey.trim()) {
     localStorage.setItem(STORAGE_ANON_KEY, anonKey.trim());
   } else {
     localStorage.removeItem(STORAGE_ANON_KEY);
