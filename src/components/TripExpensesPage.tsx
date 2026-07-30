@@ -199,56 +199,56 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
       </div>
 
       {/* Expense Log Table - Spreadsheet view with fixed layout */}
-      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_16px] sm:p-[22px_24px]">
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         {state.expenses.length ? (
-          <div className="overflow-x-auto rounded-xl border border-[var(--hair)] bg-[var(--card)]">
-            <table className="tbl w-full border-collapse table-fixed min-w-[1180px]">
+          <div className="overflow-x-auto">
+            <table className="tbl w-full border-collapse table-fixed min-w-[840px]">
               <colgroup>
-                <col style={{ width: '125px' }} /> {/* DATA */}
-                <col style={{ width: '135px' }} /> {/* CATEGORIA */}
-                <col style={{ width: '170px' }} /> {/* DESCRIZIONE */}
-                <col style={{ width: '145px' }} /> {/* STATO */}
-                <col style={{ width: '125px' }} /> {/* SCADENZA */}
-                <col style={{ width: '100px' }} /> {/* PREVENTIVO */}
-                <col style={{ width: '100px' }} /> {/* EFFETTIVO */}
-                <col style={{ width: '100px' }} /> {/* PAGATO */}
-                <col style={{ width: '105px' }} /> {/* DA PAGARE */}
-                <col style={{ width: '95px' }} />  {/* DIFF. */}
-                <col style={{ width: '40px' }} />  {/* AZIONI */}
+                <col style={{ width: '130px' }} /> {/* DATA */}
+                <col style={{ width: '130px' }} /> {/* CATEGORIA */}
+                <col style={{ width: '160px' }} /> {/* DESCRIZIONE */}
+                <col style={{ width: '135px' }} /> {/* STATO */}
+                <col style={{ width: '130px' }} /> {/* SCADENZA */}
+                <col style={{ width: '90px' }} />  {/* PREVENTIVO */}
+                <col style={{ width: '90px' }} />  {/* EFFETTIVO */}
+                <col style={{ width: '90px' }} />  {/* PAGATO */}
+                <col style={{ width: '95px' }} />  {/* DA PAGARE */}
+                <col style={{ width: '85px' }} />  {/* DIFF. */}
+                <col style={{ width: '35px' }} />  {/* AZIONI */}
               </colgroup>
               <thead>
-                <tr className="border-b border-[var(--line)] bg-[var(--soft)]">
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-2.5">
+                <tr className="border-b border-[var(--hair)]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
                     {t('col_date', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
                     {t('col_cat', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
                     {t('col_desc', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
                     {t('col_booking_status', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[8px]">
                     {t('col_due_date', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
                     {t('col_budgeted', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
                     {t('col_actual', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
                     {t('col_paid', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
                     {t('col_to_pay', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-2.5">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[8px]">
                     {t('col_diff', lang)}
                   </th>
-                  <th className="py-3 px-2" />
+                  <th className="pb-[10px] px-[8px]" />
                 </tr>
               </thead>
               <tbody>
@@ -262,27 +262,27 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                   return (
                     <tr
                       key={i}
-                      className={`border-b border-[var(--hair)] transition-colors hover:bg-[var(--soft)]/60 ${
+                      className={`border-b border-[var(--hair)] ${
                         isOver ? 'bg-[rgba(214,72,59,0.06)]' : ''
                       }`}
                     >
-                      <td className="py-2 px-1.5">
+                      <td className="py-[9px] px-[6px]">
                         <input
                           type="date"
                           value={e.date}
                           onChange={(ev) =>
                             onUpdateExpense(i, 'date', ev.target.value)
                           }
-                          className="w-full border border-transparent bg-transparent rounded-md px-1.5 py-1 text-[12.5px] font-semibold text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none cursor-pointer transition-colors"
+                          className="w-full border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none cursor-pointer"
                         />
                       </td>
-                      <td className="py-2 px-1.5">
+                      <td className="py-[9px] px-[6px]">
                         <select
                           value={e.cat}
                           onChange={(ev) =>
                             onUpdateExpense(i, 'cat', ev.target.value)
                           }
-                          className="w-full border border-transparent bg-transparent rounded-md px-1.5 py-1 text-[12.5px] font-semibold text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none cursor-pointer truncate transition-colors"
+                          className="w-full border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none cursor-pointer"
                         >
                           {CATS.map((c) => (
                             <option key={c} value={c}>
@@ -291,23 +291,23 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                           ))}
                         </select>
                       </td>
-                      <td className="py-2 px-1.5">
+                      <td className="py-[9px] px-[6px]">
                         <input
                           value={e.desc}
                           onChange={(ev) =>
                             onUpdateExpense(i, 'desc', ev.target.value)
                           }
                           placeholder="—"
-                          className="w-full border border-transparent bg-transparent rounded-md px-1.5 py-1 text-[12.5px] font-semibold text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none transition-colors"
+                          className="w-full border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none"
                         />
                       </td>
-                      <td className="py-2 px-1.5">
+                      <td className="py-[9px] px-[6px]">
                         <select
                           value={e.bookingStatus || 'to_search'}
                           onChange={(ev) =>
                             onUpdateExpense(i, 'bookingStatus', ev.target.value as BookingStatus)
                           }
-                          className={`w-full border rounded-full px-2 py-1 text-[11.5px] font-bold outline-none cursor-pointer truncate transition-colors ${getStatusBadgeStyle(e.bookingStatus)}`}
+                          className="w-full border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none cursor-pointer"
                         >
                           <option value="to_search">{t('bs_to_search', lang)}</option>
                           <option value="evaluating">{t('bs_evaluating', lang)}</option>
@@ -316,19 +316,19 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                           <option value="paid">{t('bs_paid', lang)}</option>
                         </select>
                       </td>
-                      <td className="py-2 px-1.5">
+                      <td className="py-[9px] px-[6px]">
                         <input
                           type="date"
                           value={e.dueDate || ''}
                           onChange={(ev) =>
                             onUpdateExpense(i, 'dueDate', ev.target.value)
                           }
-                          className="w-full border border-transparent bg-transparent rounded-md px-1.5 py-1 text-[12.5px] font-semibold text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none cursor-pointer transition-colors"
+                          className="w-full border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none cursor-pointer"
                         />
                       </td>
-                      <td className="py-2 px-1.5 text-right">
+                      <td className="py-[9px] px-[6px] text-right">
                         <input
-                          className="w-full text-right font-mono font-bold border border-transparent bg-transparent rounded-md px-1.5 py-1 text-[13px] text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none transition-colors"
+                          className="amt num w-full text-right font-mono font-bold border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none"
                           inputMode="decimal"
                           value={e.budgeted}
                           onChange={(ev) =>
@@ -336,9 +336,9 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                           }
                         />
                       </td>
-                      <td className="py-2 px-1.5 text-right">
+                      <td className="py-[9px] px-[6px] text-right">
                         <input
-                          className="w-full text-right font-mono font-bold border border-transparent bg-transparent rounded-md px-1.5 py-1 text-[13px] text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none transition-colors"
+                          className="amt num w-full text-right font-mono font-bold border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none"
                           inputMode="decimal"
                           value={e.actual}
                           onChange={(ev) =>
@@ -346,9 +346,9 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                           }
                         />
                       </td>
-                      <td className="py-2 px-1.5 text-right">
+                      <td className="py-[9px] px-[6px] text-right">
                         <input
-                          className="w-full text-right font-mono font-bold border border-transparent bg-transparent rounded-md px-1.5 py-1 text-[13px] text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--card)] focus:bg-[var(--card)] focus:border-[var(--horizon)] outline-none transition-colors"
+                          className="amt num w-full text-right font-mono font-bold border border-transparent bg-transparent rounded-lg p-[6px_6px] text-[13px] text-[var(--ink)] hover:bg-[var(--soft)] focus:bg-[var(--soft)] focus:border-[var(--horizon)] outline-none"
                           inputMode="decimal"
                           value={e.paid ?? '0'}
                           onChange={(ev) =>
@@ -356,11 +356,11 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                           }
                         />
                       </td>
-                      <td className="py-2 px-2 text-right num font-mono font-bold text-[13px] text-[var(--red)]">
+                      <td className="py-[9px] px-[6px] text-right num font-mono font-bold text-[13px] text-[var(--red)]">
                         {fmt(toPay, currency, lang)}
                       </td>
                       <td
-                        className="py-2 px-2 text-right num font-mono font-bold text-[13px]"
+                        className="py-[9px] px-[6px] text-right num font-mono font-bold text-[13px]"
                         style={{
                           color: isOver
                             ? 'var(--red)'
@@ -371,10 +371,10 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                       >
                         {(diff > 0 ? '+' : '') + fmt(diff, currency, lang)}
                       </td>
-                      <td className="py-2 px-1 text-center">
+                      <td className="py-[9px] px-[6px] text-right">
                         <button
                           onClick={() => onDeleteExpense(i)}
-                          className="del border-none bg-transparent text-[var(--muted)] text-[15px] w-[26px] h-[26px] rounded-md hover:bg-[rgba(214,72,59,0.1)] hover:text-[var(--red)] cursor-pointer transition-colors"
+                          className="del border-none bg-transparent text-[var(--muted)] text-[16px] w-[28px] h-[28px] rounded-lg hover:bg-[rgba(214,72,59,0.1)] hover:text-[var(--red)] cursor-pointer transition-colors"
                         >
                           ✕
                         </button>
@@ -383,26 +383,6 @@ export const TripExpensesPage: React.FC<TripExpensesPageProps> = ({
                   );
                 })}
               </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-[var(--line)] bg-[var(--soft)] font-mono font-extrabold text-[13px] text-[var(--ink)]">
-                  <td colSpan={5} className="py-3 px-3 text-left font-sans text-[11px] font-extrabold uppercase tracking-wider text-[var(--sub)]">
-                    {lang === 'it' ? 'TOTALE FOGLIO DI CALCOLO' : 'SPREADSHEET TOTAL'}
-                  </td>
-                  <td className="py-3 px-2 text-right">{fmt(totBudgeted, currency, lang)}</td>
-                  <td className="py-3 px-2 text-right">{fmt(totActual, currency, lang)}</td>
-                  <td className="py-3 px-2 text-right text-emerald-600 dark:text-emerald-400">{fmt(totPaid, currency, lang)}</td>
-                  <td className="py-3 px-2 text-right text-[var(--red)]">{fmt(totToPay, currency, lang)}</td>
-                  <td
-                    className="py-3 px-2 text-right"
-                    style={{
-                      color: totDiff < 0 ? 'var(--red)' : totDiff > 0 ? 'var(--green)' : 'var(--sub)',
-                    }}
-                  >
-                    {(totDiff > 0 ? '+' : '') + fmt(totDiff, currency, lang)}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
             </table>
           </div>
         ) : (

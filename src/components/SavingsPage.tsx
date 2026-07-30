@@ -330,10 +330,10 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
       </div>
 
       {/* Deposits Table Card */}
-      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[18px_16px] sm:p-[22px_24px]">
+      <div className="card bg-[var(--card)] border border-[var(--line)] rounded-[18px] shadow-sm p-[22px_24px]">
         {state.savings.length ? (
-          <div className="overflow-x-auto rounded-xl border border-[var(--hair)] bg-[var(--card)]">
-            <table className="tbl w-full border-collapse table-fixed min-w-[620px]">
+          <div className="overflow-x-auto">
+            <table className="tbl w-full border-collapse table-fixed min-w-[540px]">
               <colgroup>
                 <col style={{ width: '130px' }} /> {/* DATA */}
                 <col style={{ width: '120px' }} /> {/* IMPORTO */}
@@ -343,25 +343,25 @@ export const SavingsPage: React.FC<SavingsPageProps> = ({
                 <col style={{ width: '40px' }} />  {/* AZIONI */}
               </colgroup>
               <thead>
-                <tr className="border-b border-[var(--line)] bg-[var(--soft)]">
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-3">
+                <tr className="border-b border-[var(--hair)]">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
                     {t('col_date', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right py-3 px-3">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-right pb-[10px] px-[10px]">
                     {t('col_dep', lang)}
                   </th>
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-3">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
                     {t('col_method', lang)}
                   </th>
                   {multi && (
-                    <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-3">
+                    <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
                       {t('col_who', lang)}
                     </th>
                   )}
-                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left py-3 px-3">
+                  <th className="text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] text-left pb-[10px] px-[10px]">
                     {t('col_note', lang)}
                   </th>
-                  <th className="py-3 px-2" />
+                  <th className="pb-[10px] px-[10px]" />
                 </tr>
               </thead>
             <tbody>
