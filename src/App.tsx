@@ -34,6 +34,8 @@ import { OnboardingResult, WelcomeModal } from './components/WelcomeModal';
 import { CurrencyModal } from './components/CurrencyModal';
 import { TooltipBox } from './components/TooltipBox';
 import { SupabaseModal } from './components/SupabaseModal';
+import { ActivationModal } from './components/ActivationModal';
+import { isAppActivated } from './utils/license';
 import {
   getSupabaseCredentials,
   getSupabaseClient,
@@ -151,9 +153,12 @@ export default function App() {
   const activeTrip = db.trips.find((x) => x.id === db.activeId) || db.trips[0];
   const state = activeTrip.data;
 
-  // Account state
+  // Account & Activation state
   const storedAcc = getStoredUserAccount().account;
   const [accountName, setAccountName] = useState<string>(storedAcc);
+
+  const [isActivated, setIsActivated] = useState<boolean>(() => isAppActivated());
+  const [activationOpen, setActivationOpen] = useState<boolean>(!isAppActivated());
 
   // Modals & UI states (Only show welcome prompt if user is brand new and not logged in)
   const isNewClient = !db.seen && !storedAcc;
@@ -785,6 +790,7 @@ export default function App() {
           onHelp={() => setWelcomeOpen(true)}
           onClear={handleClear}
           onOpenSupabase={() => setSupabaseOpen(true)}
+          onOpenActivation={() => setActivationOpen(true)}
           isSupabaseConfigured={isSupabaseConfigured}
         />
 
@@ -1087,6 +1093,17 @@ export default function App() {
         onLoginAccount={handleLoginAccount}
         onLogoutAccount={handleLogoutAccount}
         onDeleteAccount={handleDeleteAccount}
+      />
+
+      <ActivationModal
+        isOpen={activationOpen || !isActivated}
+        isOverlay={!isActivated}
+        lang={state.lang}
+        accountName={accountName}
+        onActivated={() => {
+          setIsActivated(true);
+          setActivationOpen(false);
+        }}
       />
 
       <TooltipBox activeTip={activeTip} onClose={() => setActiveTip(null)} />

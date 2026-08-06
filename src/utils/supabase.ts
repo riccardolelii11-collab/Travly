@@ -162,6 +162,25 @@ drop policy if exists "Public insert backups" on travly_backups;
 create policy "Public insert backups" on travly_backups for insert with check (true);
 drop policy if exists "Public delete backups" on travly_backups;
 create policy "Public delete backups" on travly_backups for delete using (true);
+
+-- Tabella Licenze / Codici di Attivazione
+create table if not exists travly_licenses (
+  code text primary key,
+  is_used boolean default false,
+  used_by text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  used_at timestamp with time zone
+);
+
+alter table travly_licenses enable row level security;
+drop policy if exists "Public select licenses" on travly_licenses;
+create policy "Public select licenses" on travly_licenses for select using (true);
+drop policy if exists "Public insert licenses" on travly_licenses;
+create policy "Public insert licenses" on travly_licenses for insert with check (true);
+drop policy if exists "Public update licenses" on travly_licenses;
+create policy "Public update licenses" on travly_licenses for update using (true);
+drop policy if exists "Public delete licenses" on travly_licenses;
+create policy "Public delete licenses" on travly_licenses for delete using (true);
 `;
 
 export async function loadFromSupabase(accountKey: string = 'main'): Promise<AppDatabase | null> {
