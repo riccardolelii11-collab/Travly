@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travly - Generatore Codici Licenza (Admin)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B132B;
+      --card: #1C2541;
+      --soft: #0B172A;
+      --line: #3A506B;
+      --teal: #12B5A5;
+      --teal-hover: #0EA294;
+      --text: #FFFFFF;
+      --sub: #9FB1CE;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .container {
+      width: 100%;
+      max-width: 640px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 2.2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(18, 181, 165, 0.15);
+      color: var(--teal);
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 50px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    p.desc {
+      color: var(--sub);
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--sub);
+      margin-bottom: 0.5rem;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--teal);
+    }
+    textarea {
+      resize: vertical;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+    .btn {
+      width: 100%;
+      padding: 0.95rem;
+      background: var(--teal);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .btn:hover {
+      background: var(--teal-hover);
+    }
+    .btn:active {
+      transform: scale(0.99);
+    }
+    .btn-secondary {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: var(--line);
+    }
+    .result-box {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      display: none;
+    }
+    .result-box.active {
+      display: block;
+    }
+    .codes-list {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      color: var(--teal);
+      background: #000;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 0.75rem;
+      word-break: break-all;
+      white-space: pre-line;
+      border: 1px solid rgba(18, 181, 165, 0.3);
+    }
+    .status-msg {
+      font-size: 0.85rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+    .status-success { background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-error { background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .row { display: flex; gap: 1rem; }
+    .row > div { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <span class="badge">Sito Riservato Owner / Admin</span>
+    <h1>Generatore Licenze Travly</h1>
+    <p class="desc">Usa questo strumento per generare codici di attivazione Travly per i clienti che acquistano online. I codici verranno salvati direttamente nel tuo database Supabase.</p>
+
+    <div class="form-group">
+      <label>Supabase URL</label>
+      <input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co" value="https://pmuopkpjshwhenrmxuez.supabase.co">
+    </div>
+
+    <div class="form-group">
+      <label>Supabase Anon Public Key</label>
+      <textarea id="sbKey" rows="2">sb_publishable_iI0Cm1qwYDx8PVsgsMlk2A_D4AZQnSH</textarea>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>Quantità Codici da Generare</label>
+        <select id="codeQty">
+          <option value="1">1 Codice</option>
+          <option value="5">5 Codici</option>
+          <option value="10">10 Codici</option>
+          <option value="25">25 Codici</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Prefisso Codice</label>
+        <input type="text" id="codePrefix" value="TRV" style="text-transform: uppercase;">
+      </div>
+    </div>
+
+    <button class="btn" onclick="generateLicenses()">
+      ⚡ Genera e Salva in Supabase
+    </button>
+
+    <div id="statusContainer"></div>
+
+    <div id="resultBox" class="result-box">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label style="margin:0;">Codici Licenza Generati:</label>
+        <button class="btn-secondary" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.75rem; margin:0;" onclick="copyCodes()">
+          📋 Copia Codici
+        </button>
+      </div>
+      <div id="codesDisplay" class="codes-list"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentCodes = [];
+
+    function randomChunk(len = 4) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let res = '';
+      for (let i = 0; i < len; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return res;
+    }
+
+    async function generateLicenses() {
+      const url = document.getElementById('sbUrl').value.trim();
+      const key = document.getElementById('sbKey').value.trim();
+      const qty = parseInt(document.getElementById('codeQty').value, 10);
+      let prefix = document.getElementById('codePrefix').value.trim().toUpperCase() || 'TRV';
+
+      const statusContainer = document.getElementById('statusContainer');
+      const resultBox = document.getElementById('resultBox');
+      const codesDisplay = document.getElementById('codesDisplay');
+
+      statusContainer.innerHTML = '';
+      resultBox.classList.remove('active');
+
+      if (!url || !key) {
+        statusContainer.innerHTML = '<div class="status-msg status-error">Inserisci sia l\'URL che la chiave Supabase.</div>';
+        return;
+      }
+
+      // Generate codes
+      currentCodes = [];
+      for (let i = 0; i < qty; i++) {
+        currentCodes.push(`${prefix}-${randomChunk(4)}-${randomChunk(4)}-${randomChunk(4)}`);
+      }
+
+      try {
+        const supabase = window.supabase.createClient(url, key);
+        const rows = currentCodes.map(c => ({
+          code: c,
+          is_used: false,
+          created_at: new Date().toISOString()
+        }));
+
+        const { data, error } = await supabase
+          .from('travly_licenses')
+          .insert(rows);
+
+        if (error) {
+          statusContainer.innerHTML = `<div class="status-msg status-error">Errore Supabase: ${error.message}<br><small>Assicurati di aver creato la tabella <code>travly_licenses</code> in Supabase.</small></div>`;
+        } else {
+          statusContainer.innerHTML = `<div class="status-msg status-success">✅ ${qty} codice/i salvato/i con successo nel database Supabase!</div>`;
+        }
+
+        codesDisplay.innerText = currentCodes.join('\n');
+        resultBox.classList.add('active');
+
+      } catch (err) {
+        statusContainer.innerHTML = `<div class="status-msg status-error">Errore connessione: ${err.message}</div>`;
+        codesDisplay.innerText = currentCodes.join('\n');
+        resultBox.classList.add('active');
+      }
+    }
+
+    function copyCodes() {
+      if (!currentCodes.length) return;
+      navigator.clipboard.writeText(currentCodes.join('\n'));
+      alert('Codici copiati negli appunti!');
+    }
+  </script>
+</body>
+</html>

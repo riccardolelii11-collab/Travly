@@ -35,6 +35,7 @@ import { CurrencyModal } from './components/CurrencyModal';
 import { TooltipBox } from './components/TooltipBox';
 import { SupabaseModal } from './components/SupabaseModal';
 import { ActivationModal } from './components/ActivationModal';
+import { AdminGeneratorModal } from './components/AdminGeneratorModal';
 import { isAppActivated } from './utils/license';
 import {
   getSupabaseCredentials,
@@ -159,6 +160,12 @@ export default function App() {
 
   const [isActivated, setIsActivated] = useState<boolean>(() => isAppActivated());
   const [activationOpen, setActivationOpen] = useState<boolean>(!isAppActivated());
+  const [adminModalOpen, setAdminModalOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && (
+      window.location.search.includes('admin') ||
+      window.location.search.includes('generator')
+    );
+  });
 
   // Modals & UI states (Only show welcome prompt if user is brand new and not logged in)
   const isNewClient = !db.seen && !storedAcc;
@@ -1104,6 +1111,12 @@ export default function App() {
           setIsActivated(true);
           setActivationOpen(false);
         }}
+      />
+
+      <AdminGeneratorModal
+        isOpen={adminModalOpen}
+        onClose={() => setAdminModalOpen(false)}
+        lang={state.lang}
       />
 
       <TooltipBox activeTip={activeTip} onClose={() => setActiveTip(null)} />
