@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travly - Generatore Codici Licenza (Admin)</title>
+  <title>Travly - Generatore Licenze Admin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,19 +32,20 @@
     }
     .container {
       width: 100%;
-      max-width: 640px;
+      max-width: 680px;
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: 20px;
-      padding: 2.2rem;
+      padding: 2rem;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
     .badge {
       display: inline-block;
-      background: rgba(18, 181, 165, 0.15);
-      color: var(--teal);
+      background: rgba(245, 158, 11, 0.15);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.3);
       font-weight: 800;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       padding: 0.25rem 0.75rem;
       border-radius: 50px;
       text-transform: uppercase;
@@ -52,14 +53,14 @@
       margin-bottom: 0.75rem;
     }
     h1 {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 800;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
       letter-spacing: -0.02em;
     }
     p.desc {
       color: var(--sub);
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       line-height: 1.5;
       margin-bottom: 1.5rem;
     }
@@ -122,6 +123,11 @@
       background: var(--soft);
       border: 1px solid var(--line);
       color: var(--text);
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
     }
     .btn-secondary:hover {
       background: var(--line);
@@ -139,7 +145,7 @@
     }
     .codes-list {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       color: var(--teal);
       background: #000;
       padding: 1rem;
@@ -159,59 +165,191 @@
     .status-error { background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
     .row { display: flex; gap: 1rem; }
     .row > div { flex: 1; }
+    
+    /* Gate Screen */
+    #gateScreen { text-center: center; }
+    .gate-card { text-align: center; padding: 1.5rem 0; }
+    .gate-card input { text-align: center; font-size: 1.2rem; letter-spacing: 0.2em; font-weight: 800; margin-bottom: 1rem; }
+    
+    /* License Table Item */
+    .lic-item {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.825rem;
+    }
+    .lic-item:last-child { border-bottom: none; }
+    .tag-used {
+      background: rgba(245, 158, 11, 0.2);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 0.2rem 0.6rem;
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+    .tag-avail {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10B981;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 0.2rem 0.6rem;
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+    .filter-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .filter-tab {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      color: var(--sub);
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .filter-tab.active {
+      background: var(--teal);
+      color: #fff;
+      border-color: var(--teal);
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <span class="badge">Sito Riservato Owner / Admin</span>
-    <h1>Generatore Licenze Travly</h1>
-    <p class="desc">Usa questo strumento per generare codici di attivazione Travly per i clienti che acquistano online. I codici verranno salvati direttamente nel tuo database Supabase.</p>
-
-    <div class="form-group">
-      <label>Supabase URL</label>
-      <input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co" value="https://pmuopkpjshwhenrmxuez.supabase.co">
+    <!-- PASSWORD GATE SCREEN -->
+    <div id="gateScreen">
+      <div class="gate-card">
+        <span class="badge">🔒 Area Riservata Admin</span>
+        <h1>Accesso Generatore Licenze</h1>
+        <p class="desc">Inserisci la password di amministrazione per sbloccare la generazione dei codici di attivazione Travly.</p>
+        
+        <form onsubmit="unlockAdmin(event)" style="max-width: 320px; margin: 0 auto;">
+          <input type="password" id="adminPassInput" placeholder="PASSWORD ADMIN" required autofocus>
+          <button type="submit" class="btn">
+            🔑 Sblocca Generatore
+          </button>
+        </form>
+        <div id="gateError"></div>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Supabase Anon Public Key</label>
-      <textarea id="sbKey" rows="2">sb_publishable_iI0Cm1qwYDx8PVsgsMlk2A_D4AZQnSH</textarea>
-    </div>
+    <!-- MAIN GENERATOR INTERFACE (HIDDEN BY DEFAULT) -->
+    <div id="adminApp" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+        <div>
+          <span class="badge">🔒 Autenticato Admin</span>
+          <h1>Generatore Licenze Travly</h1>
+        </div>
+        <button class="btn-secondary" onclick="lockAdmin()">🔒 Esci</button>
+      </div>
 
-    <div class="row">
+      <p class="desc">I codici generati verranno salvati direttamente nella tabella separata <code>travly_licenses</code> in Supabase.</p>
+
       <div class="form-group">
-        <label>Quantità Codici da Generare</label>
-        <select id="codeQty">
-          <option value="1">1 Codice</option>
-          <option value="5">5 Codici</option>
-          <option value="10">10 Codici</option>
-          <option value="25">25 Codici</option>
-        </select>
+        <label>Supabase URL</label>
+        <input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co" value="https://pmuopkpjshwhenrmxuez.supabase.co">
       </div>
+
       <div class="form-group">
-        <label>Prefisso Codice</label>
-        <input type="text" id="codePrefix" value="TRV" style="text-transform: uppercase;">
+        <label>Supabase Anon Public Key</label>
+        <textarea id="sbKey" rows="2">sb_publishable_iI0Cm1qwYDx8PVsgsMlk2A_D4AZQnSH</textarea>
       </div>
-    </div>
 
-    <button class="btn" onclick="generateLicenses()">
-      ⚡ Genera e Salva in Supabase
-    </button>
-
-    <div id="statusContainer"></div>
-
-    <div id="resultBox" class="result-box">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <label style="margin:0;">Codici Licenza Generati:</label>
-        <button class="btn-secondary" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.75rem; margin:0;" onclick="copyCodes()">
-          📋 Copia Codici
-        </button>
+      <div class="row">
+        <div class="form-group">
+          <label>Quantità Codici da Generare</label>
+          <select id="codeQty">
+            <option value="1">1 Codice</option>
+            <option value="5">5 Codici</option>
+            <option value="10">10 Codici</option>
+            <option value="25">25 Codici</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Prefisso Codice</label>
+          <input type="text" id="codePrefix" value="TRV" style="text-transform: uppercase;">
+        </div>
       </div>
-      <div id="codesDisplay" class="codes-list"></div>
+
+      <button class="btn" onclick="generateLicenses()">
+        ⚡ Genera e Salva in Supabase
+      </button>
+
+      <div id="statusContainer"></div>
+
+      <div id="resultBox" class="result-box">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label style="margin:0;">Codici appena creati:</label>
+          <button class="btn-secondary" style="width: auto; padding: 0.3rem 0.7rem; font-size: 0.75rem; margin:0;" onclick="copyCodes()">
+            📋 Copia Tutti
+          </button>
+        </div>
+        <div id="codesDisplay" class="codes-list"></div>
+      </div>
+
+      <!-- ALL LICENSES SECTION -->
+      <div style="margin-top: 2rem; border-top: 1px solid var(--line); padding-top: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3>📋 Elenco Licenze in Supabase</h3>
+          <button class="btn-secondary" onclick="fetchLicensesFromDb()">🔄 Ricarica Data</button>
+        </div>
+
+        <div class="filter-tabs">
+          <button class="filter-tab active" id="tabAll" onclick="setFilter('all')">Tutti (<span id="cntAll">0</span>)</button>
+          <button class="filter-tab" id="tabAvail" onclick="setFilter('avail')">🟢 Disponibili (<span id="cntAvail">0</span>)</button>
+          <button class="filter-tab" id="tabUsed" onclick="setFilter('used')">🔴 Già Utilizzati (<span id="cntUsed">0</span>)</button>
+        </div>
+
+        <div id="licContainer" style="background: var(--soft); border: 1px solid var(--line); border-radius: 12px; max-height: 250px; overflow-y: auto; margin-top: 0.5rem;">
+          <div style="padding: 1rem; text-align: center; color: var(--sub); font-size: 0.85rem;">Clicca "Ricarica Data" per visualizzare le licenze...</div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
     let currentCodes = [];
+    let allLicenses = [];
+    let currentFilter = 'all';
+
+    // Password Gate Check
+    if (sessionStorage.getItem('travly_admin_authed') === 'true') {
+      showAdminApp();
+    }
+
+    function unlockAdmin(e) {
+      e.preventDefault();
+      const pass = document.getElementById('adminPassInput').value.trim();
+      const errDiv = document.getElementById('gateError');
+      errDiv.innerHTML = '';
+
+      if (pass === 'CIUCCIO') {
+        sessionStorage.setItem('travly_admin_authed', 'true');
+        showAdminApp();
+      } else {
+        errDiv.innerHTML = '<div class="status-msg status-error">Password errata! Accesso negato.</div>';
+      }
+    }
+
+    function showAdminApp() {
+      document.getElementById('gateScreen').style.display = 'none';
+      document.getElementById('adminApp').style.display = 'block';
+      fetchLicensesFromDb();
+    }
+
+    function lockAdmin() {
+      sessionStorage.removeItem('travly_admin_authed');
+      location.reload();
+    }
 
     function randomChunk(len = 4) {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -240,7 +378,6 @@
         return;
       }
 
-      // Generate codes
       currentCodes = [];
       for (let i = 0; i < qty; i++) {
         currentCodes.push(`${prefix}-${randomChunk(4)}-${randomChunk(4)}-${randomChunk(4)}`);
@@ -259,9 +396,10 @@
           .insert(rows);
 
         if (error) {
-          statusContainer.innerHTML = `<div class="status-msg status-error">Errore Supabase: ${error.message}<br><small>Assicurati di aver creato la tabella <code>travly_licenses</code> in Supabase.</small></div>`;
+          statusContainer.innerHTML = `<div class="status-msg status-error">Errore Supabase: ${error.message}<br><small>Assicurati di aver creato la tabella <code>travly_licenses</code>.</small></div>`;
         } else {
           statusContainer.innerHTML = `<div class="status-msg status-success">✅ ${qty} codice/i salvato/i con successo nel database Supabase!</div>`;
+          fetchLicensesFromDb();
         }
 
         codesDisplay.innerText = currentCodes.join('\n');
@@ -274,10 +412,92 @@
       }
     }
 
+    async function fetchLicensesFromDb() {
+      const url = document.getElementById('sbUrl').value.trim();
+      const key = document.getElementById('sbKey').value.trim();
+      const licContainer = document.getElementById('licContainer');
+
+      if (!url || !key) return;
+
+      try {
+        const supabase = window.supabase.createClient(url, key);
+        const { data, error } = await supabase
+          .from('travly_licenses')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          licContainer.innerHTML = `<div style="padding: 1rem; color: #EF4444; font-size:0.85rem;">Errore caricamento: ${error.message}</div>`;
+          return;
+        }
+
+        allLicenses = data || [];
+        renderLicenses();
+      } catch (e) {
+        licContainer.innerHTML = `<div style="padding: 1rem; color: #EF4444; font-size:0.85rem;">Eccezione: ${e.message}</div>`;
+      }
+    }
+
+    function setFilter(f) {
+      currentFilter = f;
+      document.querySelectorAll('.filter-tab').forEach(el => el.classList.remove('active'));
+      if (f === 'all') document.getElementById('tabAll').classList.add('active');
+      if (f === 'avail') document.getElementById('tabAvail').classList.add('active');
+      if (f === 'used') document.getElementById('tabUsed').classList.add('active');
+      renderLicenses();
+    }
+
+    function renderLicenses() {
+      const licContainer = document.getElementById('licContainer');
+      const avail = allLicenses.filter(l => !l.is_used);
+      const used = allLicenses.filter(l => l.is_used);
+
+      document.getElementById('cntAll').innerText = allLicenses.length;
+      document.getElementById('cntAvail').innerText = avail.length;
+      document.getElementById('cntUsed').innerText = used.length;
+
+      let list = allLicenses;
+      if (currentFilter === 'avail') list = avail;
+      if (currentFilter === 'used') list = used;
+
+      if (!list.length) {
+        licContainer.innerHTML = `<div style="padding: 1rem; text-align: center; color: var(--sub); font-size: 0.85rem;">Nessuna licenza trovata per il filtro selezionato.</div>`;
+        return;
+      }
+
+      let html = '';
+      list.forEach(lic => {
+        const badge = lic.is_used ? `<span class="tag-used">🔴 GIÀ USATO</span>` : `<span class="tag-avail">🟢 DISPONIBILE</span>`;
+        const details = lic.is_used 
+          ? `<div style="color: #F59E0B; font-size:0.75rem;">Dispositivo: ${lic.used_by || 'Utente registrato'} ${lic.used_at ? '(' + new Date(lic.used_at).toLocaleDateString() + ')' : ''}</div>`
+          : `<div style="color: #10B981; font-size:0.75rem;">In attesa di attivazione cliente</div>`;
+
+        html += `
+          <div class="lic-item">
+            <div>
+              <div style="font-family:'JetBrains Mono', monospace; font-weight:800; font-size:0.9rem;">${lic.code}</div>
+              ${details}
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              ${badge}
+              <button class="btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="copySingle('${lic.code}')">Copia</button>
+            </div>
+          </div>
+        `;
+      });
+
+      licContainer.innerHTML = html;
+    }
+
     function copyCodes() {
       if (!currentCodes.length) return;
       navigator.clipboard.writeText(currentCodes.join('\n'));
       alert('Codici copiati negli appunti!');
+    }
+
+    function copySingle(code) {
+      navigator.clipboard.writeText(code);
+      alert('Codice ' + code + ' copiato negli appunti!');
     }
   </script>
 </body>

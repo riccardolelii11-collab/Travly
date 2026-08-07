@@ -798,6 +798,7 @@ export default function App() {
           onClear={handleClear}
           onOpenSupabase={() => setSupabaseOpen(true)}
           onOpenActivation={() => setActivationOpen(true)}
+          onOpenAdminGenerator={() => setAdminModalOpen(true)}
           isSupabaseConfigured={isSupabaseConfigured}
         />
 

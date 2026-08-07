@@ -257,31 +257,77 @@ export const EXTERNAL_GENERATOR_HTML_CODE = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Generatore Codici Travly</title>
+  <title>Generatore Licenze Travly</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background: #0B132B; color: #fff; padding: 2rem; max-width: 600px; margin: auto; }
-    .card { background: #1C2541; padding: 2rem; border-radius: 1rem; border: 1px solid #3A506B; }
-    button { background: #12B5A5; color: #fff; border: none; padding: 0.75rem 1.5rem; font-weight: bold; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; width: 100%; margin-top: 1rem; }
-    input, textarea { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #3A506B; background: #0B132B; color: #fff; box-sizing: border-box; margin-top: 0.5rem; }
-    .code-display { background: #000; padding: 1rem; border-radius: 0.5rem; font-family: monospace; font-size: 1.2rem; color: #12B5A5; text-align: center; margin-top: 1rem; word-break: break-all; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0B132B; color: #fff; padding: 2rem; max-width: 650px; margin: auto; }
+    .card { background: #1C2541; padding: 2rem; border-radius: 1rem; border: 1px solid #3A506B; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .badge { background: rgba(245, 158, 11, 0.2); color: #F59E0B; padding: 0.2rem 0.6rem; border-radius: 50px; font-size: 0.75rem; font-weight: 800; border: 1px solid rgba(245,158,11,0.4); }
+    button { background: #12B5A5; color: #fff; border: none; padding: 0.75rem 1.5rem; font-weight: bold; border-radius: 0.5rem; cursor: pointer; font-size: 0.95rem; width: 100%; margin-top: 1rem; }
+    button:hover { background: #0EA294; }
+    input, textarea { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #3A506B; background: #0B172A; color: #fff; box-sizing: border-box; margin-top: 0.5rem; }
+    .code-display { background: #000; padding: 1rem; border-radius: 0.5rem; font-family: monospace; font-size: 1.1rem; color: #12B5A5; text-align: center; margin-top: 1rem; word-break: break-all; border: 1px solid #12B5A5; }
+    .lic-item { padding: 0.75rem; border-bottom: 1px solid #3A506B; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+    .tag-used { background: rgba(245, 158, 11, 0.2); color: #F59E0B; padding: 0.2rem 0.5rem; border-radius: 50px; font-size: 0.7rem; font-weight: 800; }
+    .tag-avail { background: rgba(16, 185, 129, 0.2); color: #10B981; padding: 0.2rem 0.5rem; border-radius: 50px; font-size: 0.7rem; font-weight: 800; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Generatore Licenze Travly</h2>
-    <p>Inserisci URL e Anon Key del tuo Supabase:</p>
-    <label>Supabase URL:</label>
-    <input id="sbUrl" placeholder="https://xxxx.supabase.co" value="https://pmuopkpjshwhenrmxuez.supabase.co">
-    <label>Supabase Anon Key:</label>
-    <textarea id="sbKey" rows="2">sb_publishable_iI0Cm1qwYDx8PVsgsMlk2A_D4AZQnSH</textarea>
-    
-    <button onclick="generateAndSave()">Genera & Salva Codice in Supabase</button>
-    
-    <div id="result" class="code-display" style="display:none;"></div>
+    <div id="gate" style="text-align: center;">
+      <span class="badge">🔒 Area Riservata Admin</span>
+      <h2 style="margin-top:0.5rem;">Accesso Generatore Licenze</h2>
+      <p style="color:#9FB1CE; font-size:0.85rem;">Inserisci la password di amministrazione per proseguire.</p>
+      <input type="password" id="pwd" placeholder="PASSWORD ADMIN" style="text-align:center; font-size:1.2rem; font-weight:800; letter-spacing:0.2em; margin-bottom:1rem;" autofocus>
+      <button onclick="checkPass()">🔑 Sblocca Generatore</button>
+      <div id="gateErr" style="color:#EF4444; margin-top:0.5rem; font-size:0.85rem;"></div>
+    </div>
+
+    <div id="app" style="display:none;">
+      <span class="badge">🔒 Autenticato Admin</span>
+      <h2 style="margin-top:0.5rem;">Generatore Licenze Travly</h2>
+      <p style="color:#9FB1CE; font-size:0.85rem;">I codici generati verranno salvati nella tabella separata <code>travly_licenses</code> in Supabase.</p>
+      
+      <label>Supabase URL:</label>
+      <input id="sbUrl" placeholder="https://xxxx.supabase.co" value="https://pmuopkpjshwhenrmxuez.supabase.co">
+      <label>Supabase Anon Key:</label>
+      <textarea id="sbKey" rows="2">sb_publishable_iI0Cm1qwYDx8PVsgsMlk2A_D4AZQnSH</textarea>
+      
+      <button onclick="generateAndSave()">⚡ Genera & Salva Codice in Supabase</button>
+      
+      <div id="result" class="code-display" style="display:none;"></div>
+
+      <div style="margin-top: 1.5rem; border-top: 1px solid #3A506B; padding-top: 1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0; font-size:1rem;">📋 Stato Licenze in Supabase</h3>
+          <button style="width:auto; padding:0.4rem 0.8rem; font-size:0.75rem; margin:0;" onclick="loadDb()">🔄 Ricarica</button>
+        </div>
+        <div id="dbList" style="background:#0B172A; border:1px solid #3A506B; border-radius:0.5rem; max-height:220px; overflow-y:auto; margin-top:0.75rem;"></div>
+      </div>
+    </div>
   </div>
 
   <script>
+    if (sessionStorage.getItem('travly_authed') === 'true') {
+      showApp();
+    }
+
+    function checkPass() {
+      const p = document.getElementById('pwd').value.trim();
+      if (p === 'CIUCCIO') {
+        sessionStorage.setItem('travly_authed', 'true');
+        showApp();
+      } else {
+        document.getElementById('gateErr').innerText = 'Password errata!';
+      }
+    }
+
+    function showApp() {
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      loadDb();
+    }
+
     async function generateAndSave() {
       const url = document.getElementById('sbUrl').value.trim();
       const key = document.getElementById('sbKey').value.trim();
@@ -301,14 +347,42 @@ export const EXTERNAL_GENERATOR_HTML_CODE = `<!DOCTYPE html>
         
         if (error) {
           resDiv.style.display = 'block';
-          resDiv.innerText = 'Errore: ' + error.message;
+          resDiv.innerText = 'Errore Supabase: ' + error.message;
         } else {
           resDiv.style.display = 'block';
           resDiv.innerText = 'CODICE GENERATO:\n' + newCode;
+          loadDb();
         }
       } catch (err) {
         resDiv.style.display = 'block';
         resDiv.innerText = 'Errore connessione: ' + err.message;
+      }
+    }
+
+    async function loadDb() {
+      const url = document.getElementById('sbUrl').value.trim();
+      const key = document.getElementById('sbKey').value.trim();
+      const dbList = document.getElementById('dbList');
+
+      if (!url || !key) return;
+
+      try {
+        const supabase = window.supabase.createClient(url, key);
+        const { data, error } = await supabase.from('travly_licenses').select('*').order('created_at', { ascending: false });
+        if (error || !data) {
+          dbList.innerHTML = '<div style="padding:0.75rem; color:#EF4444;">Errore: ' + (error ? error.message : 'Nessun dato') + '</div>';
+          return;
+        }
+
+        let html = '';
+        data.forEach(lic => {
+          const badge = lic.is_used ? '<span class="tag-used">🔴 GIÀ USATO</span>' : '<span class="tag-avail">🟢 DISPONIBILE</span>';
+          const info = lic.is_used ? '<div style="color:#F59E0B; font-size:0.75rem;">' + (lic.used_by || 'Utente registrato') + '</div>' : '<div style="color:#10B981; font-size:0.75rem;">In attesa di attivazione</div>';
+          html += '<div class="lic-item"><div><strong style="font-family:monospace; font-size:0.95rem;">' + lic.code + '</strong>' + info + '</div>' + badge + '</div>';
+        });
+        dbList.innerHTML = html || '<div style="padding:0.75rem; color:#9FB1CE;">Nessuna licenza trovata.</div>';
+      } catch (e) {
+        dbList.innerHTML = '<div style="padding:0.75rem; color:#EF4444;">Eccezione: ' + e.message + '</div>';
       }
     }
   </script>

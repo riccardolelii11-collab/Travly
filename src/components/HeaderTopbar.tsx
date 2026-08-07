@@ -31,6 +31,7 @@ interface HeaderTopbarProps {
   onClear: () => void;
   onOpenSupabase: () => void;
   onOpenActivation?: () => void;
+  onOpenAdminGenerator?: () => void;
   isSupabaseConfigured?: boolean;
 }
 
@@ -62,6 +63,7 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
   onClear,
   onOpenSupabase,
   onOpenActivation,
+  onOpenAdminGenerator,
   isSupabaseConfigured,
 }) => {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -234,6 +236,22 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
                     <span className="w-[18px] text-center opacity-85 text-[#12B5A5]">🔑</span>
                     <span>{lang === 'it' ? 'Licenze & Attivazione' : 'Licenses & Activation'}</span>
                   </div>
+                </button>
+              )}
+
+              {onOpenAdminGenerator && (
+                <button
+                  onClick={() => {
+                    setMoreOpen(false);
+                    onOpenAdminGenerator();
+                  }}
+                  className="flex items-center justify-between w-full text-left border-none bg-transparent text-[var(--ink)] rounded-[9px] p-[10px_11px] text-[13.5px] font-semibold hover:bg-[var(--soft)] cursor-pointer"
+                >
+                  <div className="flex items-center gap-[10px]">
+                    <span className="w-[18px] text-center opacity-85 text-amber-400">🔒</span>
+                    <span>{lang === 'it' ? 'Area Admin Generatore' : 'Admin Code Generator'}</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-mono">CIUCCIO</span>
                 </button>
               )}
 
