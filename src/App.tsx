@@ -36,7 +36,7 @@ import { TooltipBox } from './components/TooltipBox';
 import { SupabaseModal } from './components/SupabaseModal';
 import { ActivationModal } from './components/ActivationModal';
 import { AdminGeneratorModal } from './components/AdminGeneratorModal';
-import { isAppActivated } from './utils/license';
+import { isAppActivated, clearAppActivated, markAccountDeletedInSupabase } from './utils/license';
 import {
   getSupabaseCredentials,
   getSupabaseClient,
@@ -360,6 +360,9 @@ export default function App() {
 
   const handleLogoutAccount = () => {
     clearStoredUserAccount();
+    clearAppActivated();
+    setIsActivated(false);
+    setActivationOpen(true);
     setAccountName('');
     setSyncStatus('idle');
 
@@ -380,7 +383,12 @@ export default function App() {
 
   const handleDeleteAccount = async () => {
     if (!accountName) return;
+    await markAccountDeletedInSupabase(accountName);
     await deleteAccountAndData(accountName);
+    clearStoredUserAccount();
+    clearAppActivated();
+    setIsActivated(false);
+    setActivationOpen(true);
     setAccountName('');
     setSyncStatus('idle');
 
@@ -1108,12 +1116,12 @@ export default function App() {
         isOverlay={!isActivated}
         lang={state.lang}
         accountName={accountName}
-        onActivated={(accName) => {
+        onActivated={(accName, pass) => {
           setIsActivated(true);
           setActivationOpen(false);
           if (accName) {
             setAccountName(accName);
-            saveStoredUserAccount(accName, 'travly123');
+            saveStoredUserAccount(accName, pass || 'travly123');
           }
           if (!db.seen) {
             setWelcomeOpen(true);
