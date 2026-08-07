@@ -239,22 +239,6 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
                 </button>
               )}
 
-              {onOpenAdminGenerator && (
-                <button
-                  onClick={() => {
-                    setMoreOpen(false);
-                    onOpenAdminGenerator();
-                  }}
-                  className="flex items-center justify-between w-full text-left border-none bg-transparent text-[var(--ink)] rounded-[9px] p-[10px_11px] text-[13.5px] font-semibold hover:bg-[var(--soft)] cursor-pointer"
-                >
-                  <div className="flex items-center gap-[10px]">
-                    <span className="w-[18px] text-center opacity-85 text-amber-400">🔒</span>
-                    <span>{lang === 'it' ? 'Area Admin Generatore' : 'Admin Code Generator'}</span>
-                  </div>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-mono">CIUCCIO</span>
-                </button>
-              )}
-
               <div className="h-[1px] bg-[var(--hair)] my-[5px] mx-[4px]" />
 
               <button

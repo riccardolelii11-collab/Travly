@@ -67,7 +67,9 @@ export async function verifyAndActivateCode(
     return { success: false, message: 'Inserisci un codice di attivazione valido.' };
   }
 
-  const deviceId = userAccount ? `${userAccount.toLowerCase()} (${getDeviceId()})` : getDeviceId();
+  const cleanAcc = userAccount ? userAccount.trim().toLowerCase() : '';
+  const deviceId = getDeviceId();
+  const accountIdentifier = cleanAcc ? cleanAcc : `dev_${deviceId}`;
   const supabase = getSupabaseClient();
 
   // Master override code for emergency/testing or admin
@@ -115,25 +117,38 @@ export async function verifyAndActivateCode(
         return { success: false, message: 'Codice di attivazione non valido o inesistente.' };
       }
 
+      const dbUsedBy = (data.used_by || '').toLowerCase();
+
       // Check if already used
       if (data.is_used) {
-        // If it was used by the same device/user, allow re-activation
-        if (data.used_by && data.used_by.includes(deviceId)) {
+        // If used_by contains the account name or current device ID, allow multi-device re-activation!
+        const isSameAccount = cleanAcc && dbUsedBy.includes(cleanAcc);
+        const isSameDevice = dbUsedBy.includes(deviceId);
+
+        if (isSameAccount || isSameDevice) {
           setAppActivated(cleanCode);
-          return { success: true, message: 'Codice già associato a questo dispositivo. Travly sbloccato!' };
+          return {
+            success: true,
+            message: cleanAcc
+              ? `Bentornato! Codice verificato e associato all'account Travly '${userAccount}'. Travly è sbloccato su questo dispositivo!`
+              : 'Codice già associato a questo dispositivo. Travly sbloccato!',
+          };
         }
+
         return {
           success: false,
-          message: 'Questo codice è già stato utilizzato da un altro utente o dispositivo.',
+          message: dbUsedBy
+            ? `Questo codice risulta già attivato dall'account '${data.used_by}'. Se è la tua licenza, inserisci il Nome Account Travly esatto con cui lo hai attivato la prima volta.`
+            : 'Questo codice è già stato utilizzato da un altro utente o dispositivo.',
         };
       }
 
-      // Mark code as used in Supabase
+      // Mark code as used in Supabase with account association
       const { error: updateErr } = await supabase
         .from('travly_licenses')
         .update({
           is_used: true,
-          used_by: deviceId,
+          used_by: accountIdentifier,
           used_at: new Date().toISOString(),
         })
         .eq('code', cleanCode);
@@ -143,7 +158,12 @@ export async function verifyAndActivateCode(
       }
 
       setAppActivated(cleanCode);
-      return { success: true, message: 'Codice attivato con successo! Travly è ora sbloccato.' };
+      return {
+        success: true,
+        message: cleanAcc
+          ? `Codice attivato e associato con successo all'account Travly '${userAccount}'!`
+          : 'Codice attivato con successo! Travly è ora sbloccato.',
+      };
     } catch (err: any) {
       console.error('License verify error:', err);
       // Fallback if network fails but code has valid prefix

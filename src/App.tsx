@@ -1108,9 +1108,16 @@ export default function App() {
         isOverlay={!isActivated}
         lang={state.lang}
         accountName={accountName}
-        onActivated={() => {
+        onActivated={(accName) => {
           setIsActivated(true);
           setActivationOpen(false);
+          if (accName) {
+            setAccountName(accName);
+            saveStoredUserAccount(accName, 'travly123');
+          }
+          if (!db.seen) {
+            setWelcomeOpen(true);
+          }
         }}
       />
 
