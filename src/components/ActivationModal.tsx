@@ -36,7 +36,9 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   const [code, setCode] = useState('');
   const [accountInput, setAccountInput] = useState(accountName);
   const [passInput, setPassInput] = useState('');
+  const [confirmPassInput, setConfirmPassInput] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ success?: boolean; message?: string } | null>(null);
 
@@ -52,6 +54,16 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
+    if (mode === 'activate' && !code.trim()) {
+      setStatus({
+        success: false,
+        message: isIt
+          ? 'Inserisci il tuo Codice di Attivazione (es. TRV-XXXX-XXXX-XXXX).'
+          : 'Please enter your Activation Code.',
+      });
+      return;
+    }
 
     if (!accountInput.trim()) {
       setStatus({
@@ -73,14 +85,26 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       return;
     }
 
-    if (mode === 'activate' && !code.trim()) {
-      setStatus({
-        success: false,
-        message: isIt
-          ? 'Inserisci il tuo Codice di Attivazione (es. TRV-XXXX-XXXX-XXXX).'
-          : 'Please enter your Activation Code.',
-      });
-      return;
+    if (mode === 'activate') {
+      if (!confirmPassInput.trim()) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Ripeti la password nel campo di conferma.'
+            : 'Please confirm your password.',
+        });
+        return;
+      }
+
+      if (passInput.trim() !== confirmPassInput.trim()) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Le password inserite non coincidono. Verifica e riprova.'
+            : 'Passwords do not match. Please verify.',
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -216,7 +240,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                   type={showPass ? 'text' : 'password'}
                   value={passInput}
                   onChange={(e) => setPassInput(e.target.value)}
-                  placeholder={isIt ? 'Inserisci la tua password' : 'Enter your password'}
+                  placeholder={isIt ? 'Crea una password sicura' : 'Create a password'}
                   className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
                 />
                 <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -229,6 +253,32 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Confirm Password Input (Only on Activate Tab) */}
+            {mode === 'activate' && (
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                  {isIt ? '4. Ripeti Password' : '4. Confirm Password'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPass ? 'text' : 'password'}
+                    value={confirmPassInput}
+                    onChange={(e) => setConfirmPassInput(e.target.value)}
+                    placeholder={isIt ? 'Ripeti la password inserita sopra' : 'Repeat password'}
+                    className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                  />
+                  <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--sub)] hover:text-[var(--ink)] transition-colors p-1"
+                  >
+                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Optional Code in Login Mode if user wants to enter it */}
             {mode === 'login' && (
@@ -267,8 +317,8 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                     {isIt ? '⏳ Conservazione 15 Giorni in Caso di Eliminazione' : '⏳ 15-Day Recovery Grace Period'}
                   </strong>
                   {isIt
-                    ? 'In caso di eliminazione account, il tuo codice rimane salvato e recuperabile per 15 giorni. Trascorsi 15 giorni viene disattivato definitivamente.'
-                    : 'If an account is deleted, your license remains saved for 15 days to recover. After 15 days, it is permanently deactivated.'}
+                    ? 'In caso di eliminazione account, il tuo codice e i tuoi dati rimangono salvati e ripristinabili per 15 giorni. Trascorsi 15 giorni vengono disattivati definitivamente.'
+                    : 'If an account is deleted, your license and data remain saved for 15 days to recover. After 15 days, it is permanently deactivated.'}
                 </div>
               </div>
             </div>
@@ -296,7 +346,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                 loading ||
                 !accountInput.trim() ||
                 !passInput.trim() ||
-                (mode === 'activate' && !code.trim())
+                (mode === 'activate' && (!code.trim() || !confirmPassInput.trim()))
               }
               className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
