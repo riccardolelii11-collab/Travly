@@ -206,23 +206,6 @@ export default function App() {
         setSyncStatus('syncing');
         let remoteDb = await loadFromSupabase(activeAccount);
 
-        // Fallback restoration if account was restored within 15 days of deletion
-        if ((!remoteDb || !remoteDb.trips || remoteDb.trips.length === 0) && activeAccount !== 'main') {
-          const deletedBackupRaw = localStorage.getItem(`travly_deleted_backup_${activeAccount.toLowerCase()}`);
-          if (deletedBackupRaw) {
-            try {
-              const parsed = JSON.parse(deletedBackupRaw);
-              if (parsed && parsed.data && Array.isArray(parsed.data.trips)) {
-                remoteDb = parsed.data;
-                // Re-persist to cloud for seamless multi-device sync
-                await saveToSupabase(remoteDb, activeAccount);
-              }
-            } catch (e) {
-              console.warn('Error parsing deleted backup:', e);
-            }
-          }
-        }
-
         if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
           setDb(remoteDb);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteDb));
@@ -401,7 +384,7 @@ export default function App() {
 
   const handleDeleteAccount = async () => {
     if (!accountName) return;
-    await markAccountDeletedInSupabase(accountName, db);
+    await markAccountDeletedInSupabase(accountName);
     await deleteAccountAndData(accountName);
     clearStoredUserAccount();
     clearAppActivated();

@@ -11,7 +11,6 @@ import {
   Smartphone,
   Eye,
   EyeOff,
-  Clock,
   LogIn,
 } from 'lucide-react';
 import { Language } from '../types';
@@ -305,20 +304,8 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                     {isIt ? '💡 Cambio Dispositivo & Multi-Accesso' : '💡 Multi-Device Access'}
                   </strong>
                   {isIt
-                    ? 'Puoi accedere con il tuo Account e Password su qualsiasi smartphone o computer per continuare a usare la tua licenza!'
-                    : 'Log in with your Account & Password on any device to use your license!'}
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-[12px] flex items-start gap-2.5 text-xs text-[var(--sub)] leading-relaxed">
-                <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-[var(--ink)] block mb-0.5">
-                    {isIt ? '⏳ Conservazione 15 Giorni in Caso di Eliminazione' : '⏳ 15-Day Recovery Grace Period'}
-                  </strong>
-                  {isIt
-                    ? 'In caso di eliminazione account, il tuo codice e i tuoi dati rimangono salvati e ripristinabili per 15 giorni. Trascorsi 15 giorni vengono disattivati definitivamente.'
-                    : 'If an account is deleted, your license and data remain saved for 15 days to recover. After 15 days, it is permanently deactivated.'}
+                    ? 'Puoi accedere con il tuo Account e Password su qualsiasi smartphone o computer per continuare a usare la tua licenza e sincronizzare i tuoi viaggi!'
+                    : 'Log in with your Account & Password on any device to use your license and sync your trips!'}
                 </div>
               </div>
             </div>

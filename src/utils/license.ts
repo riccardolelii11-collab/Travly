@@ -56,32 +56,21 @@ export function generateRandomCode(prefix = 'TRV'): string {
 }
 
 /**
- * Marks an account/license as deleted with a 15-day grace period
+ * Marks an account as permanently deleted in Supabase and FREES UP its license code so it becomes available again.
  */
-export async function markAccountDeletedInSupabase(accountName: string, currentDb?: any): Promise<boolean> {
+export async function markAccountDeletedInSupabase(accountName: string): Promise<boolean> {
   const cleanAcc = accountName.trim().toLowerCase();
   if (!cleanAcc) return false;
 
   const supabase = getSupabaseClient();
-  const deletedAtIso = new Date().toISOString();
 
-  // Save local deletion state and backup snapshot for 15-day restoration
-  localStorage.setItem(`travly_deleted_${cleanAcc}`, deletedAtIso);
-
-  if (currentDb) {
-    try {
-      localStorage.setItem(
-        `travly_deleted_backup_${cleanAcc}`,
-        JSON.stringify({ data: currentDb, deletedAt: deletedAtIso })
-      );
-    } catch (e) {
-      console.warn('Could not store local deleted backup snapshot:', e);
-    }
-  }
+  // Clean local storage for this account
+  localStorage.removeItem(`travly_deleted_${cleanAcc}`);
+  localStorage.removeItem(`travly_deleted_backup_${cleanAcc}`);
 
   if (supabase) {
     try {
-      // Find and mark licenses associated with this account
+      // Find all licenses associated with this account in travly_licenses
       const { data } = await supabase
         .from('travly_licenses')
         .select('*');
@@ -93,29 +82,29 @@ export async function markAccountDeletedInSupabase(accountName: string, currentD
             (item.used_by.toLowerCase() === cleanAcc || item.used_by.toLowerCase().includes(cleanAcc))
         );
 
+        // Reset the license codes so they become AVAILABLE (is_used = false) again for reuse
         for (const lic of matches) {
           await supabase
             .from('travly_licenses')
             .update({
-              deleted_at: deletedAtIso,
+              is_used: false,
+              used_by: null,
+              user_pass: null,
+              used_at: null,
+              deleted_at: null,
             })
             .eq('code', lic.code);
         }
       }
 
-      // Store a restoration backup in travly_backups as well
-      if (currentDb) {
-        await supabase.from('travly_backups').insert({
-          id: 'del_snap_' + Date.now(),
-          user_account: cleanAcc,
-          label: `Ripristino Eliminazione 15 Giorni (${new Date().toLocaleDateString()})`,
-          trip_count: currentDb.trips?.length || 0,
-          data: currentDb,
-          created_at: deletedAtIso,
-        });
-      }
+      // Delete backups for this user in travly_backups
+      await supabase
+        .from('travly_backups')
+        .delete()
+        .eq('user_account', cleanAcc);
+
     } catch (err) {
-      console.warn('Notice marking account deleted in Supabase:', err);
+      console.warn('Notice resetting license in Supabase upon account deletion:', err);
     }
   }
 
@@ -124,21 +113,10 @@ export async function markAccountDeletedInSupabase(accountName: string, currentD
 }
 
 /**
- * Checks 15-day grace period status
+ * Legacy stub for grace period checks
  */
-export function isWithin15DaysGrace(deletedAtStr?: string | null): { expired: boolean; daysLeft: number } {
-  if (!deletedAtStr) return { expired: false, daysLeft: 15 };
-  const deletedTime = new Date(deletedAtStr).getTime();
-  if (isNaN(deletedTime)) return { expired: false, daysLeft: 15 };
-
-  const diffMs = Date.now() - deletedTime;
-  const daysPassed = diffMs / (1000 * 60 * 60 * 24);
-  const daysLeft = Math.max(0, Math.ceil(15 - daysPassed));
-
-  return {
-    expired: daysPassed > 15,
-    daysLeft,
-  };
+export function isWithin15DaysGrace(_deletedAtStr?: string | null): { expired: boolean; daysLeft: number } {
+  return { expired: false, daysLeft: 0 };
 }
 
 /**
@@ -176,42 +154,31 @@ export async function verifyLoginAccount(
         });
 
         if (match) {
-          // Check 15 days grace period
-          const grace = isWithin15DaysGrace(match.deleted_at);
-          if (grace.expired) {
-            return {
-              success: false,
-              message: 'L\'account è stato eliminato più di 15 giorni fa. Il codice licenza e l\'account sono stati disattivati in modo definitivo.',
-            };
-          }
-
-          // If password is present in record, verify password
+          // Verify password if recorded
           if (match.user_pass && match.user_pass !== cleanPass) {
             return { success: false, message: `Password errata per l'account '${userAccount}'.` };
           }
 
-          // Restore account from pending deletion if within 15 days & update pass
-          const updateData: any = {
-            deleted_at: null,
-            user_pass: cleanPass,
-            used_by: cleanAcc,
-          };
-
+          // Ensure license remains marked as used in Supabase
           await supabase
             .from('travly_licenses')
-            .update(updateData)
+            .update({
+              is_used: true,
+              used_by: cleanAcc,
+              user_pass: cleanPass,
+              deleted_at: null,
+            })
             .eq('code', match.code);
 
-          // Remove local deletion flags
-          localStorage.removeItem(`travly_deleted_${cleanAcc}`);
+          // Save local login credentials
+          localStorage.setItem('travly_user_account', cleanAcc);
+          localStorage.setItem('travly_user_password', cleanPass);
 
           setAppActivated(match.code);
           return {
             success: true,
             code: match.code,
-            message: match.deleted_at
-              ? `Bentornato! L'account '${userAccount}' e i tuoi dati sono stati ripristinati entro i 15 giorni di tolleranza.`
-              : `Accesso effettuato! Licenza '${match.code}' verificata e sbloccata.`,
+            message: `Accesso effettuato! Licenza '${match.code}' verificata per l'account '${userAccount}'.`,
           };
         }
       }
@@ -224,33 +191,21 @@ export async function verifyLoginAccount(
   const storedAcc = localStorage.getItem('travly_user_account');
   const storedPass = localStorage.getItem('travly_user_password');
   const storedCode = getActivatedCode();
-  const deletedAtLocal = localStorage.getItem(`travly_deleted_${cleanAcc}`);
-
-  if (deletedAtLocal) {
-    const grace = isWithin15DaysGrace(deletedAtLocal);
-    if (grace.expired) {
-      return {
-        success: false,
-        message: 'L\'account è stato eliminato più di 15 giorni fa. Il codice è stato disattivato in modo definitivo.',
-      };
-    }
-  }
 
   if (storedAcc && storedAcc.toLowerCase() === cleanAcc) {
     if (storedPass && storedPass !== cleanPass) {
       return { success: false, message: 'Password errata per questo account.' };
     }
     const codeToUse = inputCode && inputCode.trim() ? inputCode.trim().toUpperCase() : storedCode || 'TRV-LOCAL-LOGIN';
-    localStorage.removeItem(`travly_deleted_${cleanAcc}`);
     setAppActivated(codeToUse);
     return {
       success: true,
       code: codeToUse,
-      message: 'Accesso locale effettuato con successo!',
+      message: 'Accesso effettuato con successo!',
     };
   }
 
-  // If code was provided in login mode and no existing match was found, attempt activation
+  // If code was provided in login mode and no existing account match was found, attempt activation
   if (inputCode && inputCode.trim()) {
     return verifyAndActivateCode(inputCode, userAccount, userPass);
   }
@@ -281,15 +236,15 @@ export async function verifyAndActivateCode(
     return { success: false, message: 'Inserisci il Nome Account Travly.' };
   }
   if (!cleanPass) {
-    return { success: false, message: 'Inserisci la Password del tuo Account Travly.' };
+    return { success: false, message: 'Inserisci la Password per il tuo Account.' };
   }
 
-  const deviceId = getDeviceId();
-  const accountIdentifier = cleanAcc;
   const supabase = getSupabaseClient();
 
   // Master override code for emergency/testing or admin
   if (cleanCode === 'TRV-ADMIN-2026' || cleanCode === 'TRAVLY-VIP-2026') {
+    localStorage.setItem('travly_user_account', cleanAcc);
+    localStorage.setItem('travly_user_password', cleanPass);
     setAppActivated(cleanCode);
     return { success: true, message: 'Codice Master accettato! Applicazione sbloccata.' };
   }
@@ -310,6 +265,8 @@ export async function verifyAndActivateCode(
           error.message?.includes('does not exist')
         ) {
           if (cleanCode.startsWith('TRV-') && cleanCode.length >= 10) {
+            localStorage.setItem('travly_user_account', cleanAcc);
+            localStorage.setItem('travly_user_password', cleanPass);
             setAppActivated(cleanCode);
             return {
               success: true,
@@ -318,7 +275,7 @@ export async function verifyAndActivateCode(
           }
           return {
             success: false,
-            message: 'Codice non trovato. Assicurati che la tabella travly_licenses sia stata creata in Supabase.',
+            message: 'Codice non trovato in Supabase. Verifica il codice e riprova.',
           };
         }
         return {
@@ -331,38 +288,28 @@ export async function verifyAndActivateCode(
         return { success: false, message: 'Codice di attivazione non valido o inesistente.' };
       }
 
-      // Check 15 days grace period
-      const grace = isWithin15DaysGrace(data.deleted_at);
-      if (grace.expired) {
-        return {
-          success: false,
-          message: 'Questo account o codice è stato eliminato più di 15 giorni fa. Il codice è stato disattivato in modo definitivo e non è più utilizzabile.',
-        };
-      }
-
       const dbUsedBy = (data.used_by || '').toLowerCase();
 
       // Check if already used
       if (data.is_used) {
         const isSameAccount = cleanAcc && dbUsedBy.includes(cleanAcc);
-        const isSameDevice = dbUsedBy.includes(deviceId);
 
-        if (isSameAccount || isSameDevice) {
-          // Restore if marked for deletion within 15 days
+        if (isSameAccount) {
+          // Update password if needed
           await supabase
             .from('travly_licenses')
             .update({
-              deleted_at: null,
               user_pass: cleanPass,
+              deleted_at: null,
             })
             .eq('code', cleanCode);
 
+          localStorage.setItem('travly_user_account', cleanAcc);
+          localStorage.setItem('travly_user_password', cleanPass);
           setAppActivated(cleanCode);
           return {
             success: true,
-            message: data.deleted_at
-              ? `Bentornato! Account riattivato prima della scadenza dei 15 giorni. Applicazione sbloccata!`
-              : `Bentornato! Codice verificato per l'account '${userAccount}'. Travly sbloccato!`,
+            message: `Bentornato! Codice verificato per l'account '${userAccount}'. Travly sbloccato!`,
           };
         }
 
@@ -370,16 +317,16 @@ export async function verifyAndActivateCode(
           success: false,
           message: dbUsedBy
             ? `Questo codice risulta già attivato dall'account '${data.used_by}'. Se è il tuo account, usa la scheda 'Accedi' inserendo la password corretta.`
-            : 'Questo codice è già stato utilizzato da un altro utente o dispositivo.',
+            : 'Questo codice è già stato utilizzato da un altro utente.',
         };
       }
 
-      // Mark code as used in Supabase with account association and password
+      // Mark code as USED (is_used = true) in Supabase with account association and password
       const { error: updateErr } = await supabase
         .from('travly_licenses')
         .update({
           is_used: true,
-          used_by: accountIdentifier,
+          used_by: cleanAcc,
           user_pass: cleanPass,
           deleted_at: null,
           used_at: new Date().toISOString(),
@@ -390,14 +337,18 @@ export async function verifyAndActivateCode(
         console.warn('Licence update warning:', updateErr);
       }
 
+      localStorage.setItem('travly_user_account', cleanAcc);
+      localStorage.setItem('travly_user_password', cleanPass);
       setAppActivated(cleanCode);
       return {
         success: true,
-        message: `Codice attivato e associato con successo all'account Travly '${userAccount}'!`,
+        message: `Codice attivato e registrato con successo in Supabase per l'account '${userAccount}'!`,
       };
     } catch (err: any) {
       console.error('License verify error:', err);
       if (cleanCode.startsWith('TRV-') && cleanCode.length >= 10) {
+        localStorage.setItem('travly_user_account', cleanAcc);
+        localStorage.setItem('travly_user_password', cleanPass);
         setAppActivated(cleanCode);
         return { success: true, message: 'Codice registrato localmente. Travly sbloccato.' };
       }
@@ -408,6 +359,8 @@ export async function verifyAndActivateCode(
     }
   } else {
     if (cleanCode.startsWith('TRV-') && cleanCode.length >= 10) {
+      localStorage.setItem('travly_user_account', cleanAcc);
+      localStorage.setItem('travly_user_password', cleanPass);
       setAppActivated(cleanCode);
       return { success: true, message: 'Codice registrato localmente! Travly è ora sbloccato.' };
     }
