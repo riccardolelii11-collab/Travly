@@ -124,8 +124,7 @@ export function isWithin15DaysGrace(_deletedAtStr?: string | null): { expired: b
  */
 export async function verifyLoginAccount(
   userAccount: string,
-  userPass: string,
-  inputCode?: string
+  userPass: string
 ): Promise<{ success: boolean; message: string; code?: string }> {
   const cleanAcc = userAccount.trim().toLowerCase();
   const cleanPass = userPass.trim();
@@ -143,18 +142,21 @@ export async function verifyLoginAccount(
         .select('*');
 
       if (!error && Array.isArray(data)) {
-        const cleanInputCode = inputCode ? inputCode.trim().toUpperCase() : '';
-
-        // Search for license tied to this account name or matching input code
+        // Search ONLY for an active license explicitly assigned to this account name
         const match = data.find((item: any) => {
-          const dbUsedBy = (item.used_by || '').toLowerCase();
+          const dbUsedBy = (item.used_by || '').trim().toLowerCase();
+          const isUsedBool =
+            item.is_used === true ||
+            item.is_used === 'true' ||
+            item.is_used === 1 ||
+            Boolean(dbUsedBy.length > 0);
+
           const accountMatch = dbUsedBy === cleanAcc || dbUsedBy.includes(cleanAcc);
-          const codeMatch = cleanInputCode ? item.code === cleanInputCode : false;
-          return accountMatch || codeMatch;
+          return isUsedBool && accountMatch;
         });
 
         if (match) {
-          // Verify password if recorded
+          // Verify password
           if (match.user_pass && match.user_pass !== cleanPass) {
             return { success: false, message: `Password errata per l'account '${userAccount}'.` };
           }
@@ -178,7 +180,7 @@ export async function verifyLoginAccount(
           return {
             success: true,
             code: match.code,
-            message: `Accesso effettuato! Licenza '${match.code}' verificata per l'account '${userAccount}'.`,
+            message: `Accesso effettuato! Benvenuto, '${userAccount}'.`,
           };
         }
       }
@@ -187,32 +189,28 @@ export async function verifyLoginAccount(
     }
   }
 
-  // Fallback if local account match
+  // Fallback: check local storage if offline/no supabase connection, but ONLY if account name matches
   const storedAcc = localStorage.getItem('travly_user_account');
   const storedPass = localStorage.getItem('travly_user_password');
   const storedCode = getActivatedCode();
 
   if (storedAcc && storedAcc.toLowerCase() === cleanAcc) {
     if (storedPass && storedPass !== cleanPass) {
-      return { success: false, message: 'Password errata per questo account.' };
+      return { success: false, message: `Password errata per l'account '${userAccount}'.` };
     }
-    const codeToUse = inputCode && inputCode.trim() ? inputCode.trim().toUpperCase() : storedCode || 'TRV-LOCAL-LOGIN';
+    const codeToUse = storedCode || 'TRV-LOCAL-LOGIN';
     setAppActivated(codeToUse);
     return {
       success: true,
       code: codeToUse,
-      message: 'Accesso effettuato con successo!',
+      message: `Accesso effettuato con successo!`,
     };
   }
 
-  // If code was provided in login mode and no existing account match was found, attempt activation
-  if (inputCode && inputCode.trim()) {
-    return verifyAndActivateCode(inputCode, userAccount, userPass);
-  }
-
+  // Strictly return error if account does not exist or was deleted. Never create or auto-activate in Login mode.
   return {
     success: false,
-    message: `Nessun account trovato con il nome '${userAccount}'. Se è la prima volta che utilizzi Travly, passa alla scheda 'Attiva Codice'.`,
+    message: `L'account '${userAccount}' non esiste o è stato eliminato. Per creare un nuovo account o inserire un codice, passa alla scheda 'Attiva Codice'.`,
   };
 }
 

@@ -112,7 +112,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
     let result: { success: boolean; message: string; code?: string };
 
     if (mode === 'login') {
-      result = await verifyLoginAccount(accountInput.trim(), passInput.trim(), code.trim());
+      result = await verifyLoginAccount(accountInput.trim(), passInput.trim());
     } else {
       result = await verifyAndActivateCode(code.trim(), accountInput.trim(), passInput.trim());
     }
