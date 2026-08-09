@@ -38,6 +38,8 @@ export function setAppActivated(code: string): void {
 export function clearAppActivated(): void {
   localStorage.removeItem(ACTIVATED_STORAGE_KEY);
   localStorage.removeItem(ACTIVE_CODE_STORAGE_KEY);
+  localStorage.removeItem('travly_user_account');
+  localStorage.removeItem('travly_user_password');
 }
 
 /**
@@ -67,6 +69,9 @@ export async function markAccountDeletedInSupabase(accountName: string): Promise
   // Clean local storage for this account
   localStorage.removeItem(`travly_deleted_${cleanAcc}`);
   localStorage.removeItem(`travly_deleted_backup_${cleanAcc}`);
+  localStorage.removeItem('travly_user_account');
+  localStorage.removeItem('travly_user_password');
+  clearAppActivated();
 
   if (supabase) {
     try {
@@ -79,7 +84,7 @@ export async function markAccountDeletedInSupabase(accountName: string): Promise
         const matches = data.filter(
           (item: any) =>
             item.used_by &&
-            (item.used_by.toLowerCase() === cleanAcc || item.used_by.toLowerCase().includes(cleanAcc))
+            item.used_by.trim().toLowerCase() === cleanAcc
         );
 
         // Reset the license codes so they become AVAILABLE (is_used = false) again for reuse
@@ -108,7 +113,6 @@ export async function markAccountDeletedInSupabase(accountName: string): Promise
     }
   }
 
-  clearAppActivated();
   return true;
 }
 
@@ -142,7 +146,7 @@ export async function verifyLoginAccount(
         .select('*');
 
       if (!error && Array.isArray(data)) {
-        // Search ONLY for an active license explicitly assigned to this account name
+        // Search ONLY for an active license explicitly assigned EXACTLY to this account name
         const match = data.find((item: any) => {
           const dbUsedBy = (item.used_by || '').trim().toLowerCase();
           const isUsedBool =
@@ -151,7 +155,7 @@ export async function verifyLoginAccount(
             item.is_used === 1 ||
             Boolean(dbUsedBy.length > 0);
 
-          const accountMatch = dbUsedBy === cleanAcc || dbUsedBy.includes(cleanAcc);
+          const accountMatch = dbUsedBy === cleanAcc;
           return isUsedBool && accountMatch;
         });
 
@@ -189,12 +193,12 @@ export async function verifyLoginAccount(
     }
   }
 
-  // Fallback: check local storage if offline/no supabase connection, but ONLY if account name matches
-  const storedAcc = localStorage.getItem('travly_user_account');
-  const storedPass = localStorage.getItem('travly_user_password');
+  // Fallback: check local storage if offline/no supabase connection, but ONLY if account name matches EXACTLY
+  const storedAcc = (localStorage.getItem('travly_user_account') || '').trim().toLowerCase();
+  const storedPass = (localStorage.getItem('travly_user_password') || '').trim();
   const storedCode = getActivatedCode();
 
-  if (storedAcc && storedAcc.toLowerCase() === cleanAcc) {
+  if (storedAcc && storedAcc === cleanAcc) {
     if (storedPass && storedPass !== cleanPass) {
       return { success: false, message: `Password errata per l'account '${userAccount}'.` };
     }
@@ -210,7 +214,7 @@ export async function verifyLoginAccount(
   // Strictly return error if account does not exist or was deleted. Never create or auto-activate in Login mode.
   return {
     success: false,
-    message: `L'account '${userAccount}' non esiste o è stato eliminato. Per creare un nuovo account o inserire un codice, passa alla scheda 'Attiva Codice'.`,
+    message: `L'account '${userAccount}' non esiste o è stato eliminato. Per attivare l'applicazione, vai sulla scheda 'Attiva Codice' con un codice di attivazione valido.`,
   };
 }
 
@@ -316,7 +320,7 @@ export async function verifyAndActivateCode(
 
       // Check if already used
       if (isAlreadyUsed) {
-        const isSameAccount = cleanAcc && dbUsedBy.includes(cleanAcc);
+        const isSameAccount = cleanAcc && dbUsedBy.trim().toLowerCase() === cleanAcc;
 
         if (isSameAccount) {
           // Update password if needed
