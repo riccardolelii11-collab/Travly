@@ -139,6 +139,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setInputPassConfirm('');
     setLoginMessage(null);
     setShowDeleteConfirm(false);
+    onClose();
   };
 
   const handleConfirmDeleteAccount = async () => {
@@ -164,6 +165,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
           ? 'Account e tutti i dati cloud eliminati con successo dal database!'
           : 'Account and all cloud data deleted successfully from database!'
       );
+      onClose();
     } catch (err: any) {
       console.error('Delete account failed:', err);
       setLoginMessage(

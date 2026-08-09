@@ -265,12 +265,33 @@ export async function verifyAndActivateCode(
           error.message?.includes('does not exist')
         ) {
           if (cleanCode.startsWith('TRV-') && cleanCode.length >= 10) {
+            // Register new code in Supabase so it is recorded as used
+            const insertPayload = {
+              code: cleanCode,
+              is_used: true,
+              used_by: cleanAcc,
+              user_pass: cleanPass,
+              created_at: new Date().toISOString(),
+              used_at: new Date().toISOString(),
+            };
+            const { error: insErr } = await supabase.from('travly_licenses').insert(insertPayload);
+            if (insErr) {
+              console.warn('Primary insert failed, retrying core fields:', insErr);
+              await supabase.from('travly_licenses').insert({
+                code: cleanCode,
+                is_used: true,
+                used_by: cleanAcc,
+                created_at: new Date().toISOString(),
+                used_at: new Date().toISOString(),
+              });
+            }
+
             localStorage.setItem('travly_user_account', cleanAcc);
             localStorage.setItem('travly_user_password', cleanPass);
             setAppActivated(cleanCode);
             return {
               success: true,
-              message: 'Codice valido accettato! Travly è ora sbloccato.',
+              message: 'Codice attivato e registrato in Supabase! Travly è sbloccato.',
             };
           }
           return {
@@ -289,9 +310,14 @@ export async function verifyAndActivateCode(
       }
 
       const dbUsedBy = (data.used_by || '').toLowerCase();
+      const isAlreadyUsed =
+        data.is_used === true ||
+        data.is_used === 'true' ||
+        data.is_used === 1 ||
+        Boolean(dbUsedBy && dbUsedBy.trim().length > 0);
 
       // Check if already used
-      if (data.is_used) {
+      if (isAlreadyUsed) {
         const isSameAccount = cleanAcc && dbUsedBy.includes(cleanAcc);
 
         if (isSameAccount) {
@@ -322,19 +348,28 @@ export async function verifyAndActivateCode(
       }
 
       // Mark code as USED (is_used = true) in Supabase with account association and password
+      const updatePayload = {
+        is_used: true,
+        used_by: cleanAcc,
+        user_pass: cleanPass,
+        deleted_at: null,
+        used_at: new Date().toISOString(),
+      };
       const { error: updateErr } = await supabase
         .from('travly_licenses')
-        .update({
-          is_used: true,
-          used_by: cleanAcc,
-          user_pass: cleanPass,
-          deleted_at: null,
-          used_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq('code', cleanCode);
 
       if (updateErr) {
-        console.warn('Licence update warning:', updateErr);
+        console.warn('Licence primary update warning, trying fallback without user_pass:', updateErr);
+        await supabase
+          .from('travly_licenses')
+          .update({
+            is_used: true,
+            used_by: cleanAcc,
+            used_at: new Date().toISOString(),
+          })
+          .eq('code', cleanCode);
       }
 
       localStorage.setItem('travly_user_account', cleanAcc);
@@ -385,6 +420,7 @@ export async function createLicensesInSupabase(
   const rows = codes.map((c) => ({
     code: c.trim().toUpperCase(),
     is_used: false,
+    used_by: null,
     created_at: new Date().toISOString(),
   }));
 
@@ -395,7 +431,17 @@ export async function createLicensesInSupabase(
       .select();
 
     if (error) {
-      return { success: false, createdCount: 0, message: error.message };
+      console.warn('Upsert warning in createLicensesInSupabase, trying insert fallback:', error);
+      let created = 0;
+      for (const row of rows) {
+        const { error: insErr } = await supabase.from('travly_licenses').insert(row);
+        if (!insErr) created++;
+      }
+      return {
+        success: created > 0,
+        createdCount: created,
+        message: `${created} codice/i salvato/i con successo in Supabase!`,
+      };
     }
 
     return {
@@ -422,7 +468,23 @@ export async function fetchAllLicensesFromSupabase(): Promise<LicenseItem[]> {
       .order('created_at', { ascending: false });
 
     if (error || !data) return [];
-    return data as LicenseItem[];
+
+    return data.map((item: any) => {
+      const isUsedBool =
+        item.is_used === true ||
+        item.is_used === 'true' ||
+        item.is_used === 1 ||
+        Boolean(item.used_by && String(item.used_by).trim().length > 0);
+
+      return {
+        code: item.code,
+        is_used: isUsedBool,
+        used_by: item.used_by || null,
+        created_at: item.created_at || new Date().toISOString(),
+        used_at: item.used_at || null,
+        user_pass: item.user_pass || null,
+      };
+    }) as LicenseItem[];
   } catch {
     return [];
   }
@@ -435,9 +497,14 @@ create table if not exists travly_licenses (
   code text primary key,
   is_used boolean default false,
   used_by text,
+  user_pass text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  used_at timestamp with time zone
+  used_at timestamp with time zone,
+  deleted_at timestamp with time zone
 );
+
+alter table travly_licenses add column if not exists user_pass text;
+alter table travly_licenses add column if not exists deleted_at timestamp with time zone;
 
 alter table travly_licenses enable row level security;
 

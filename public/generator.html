@@ -388,6 +388,7 @@
         const rows = currentCodes.map(c => ({
           code: c,
           is_used: false,
+          used_by: null,
           created_at: new Date().toISOString()
         }));
 
@@ -431,7 +432,10 @@
           return;
         }
 
-        allLicenses = data || [];
+        allLicenses = (data || []).map(item => ({
+          ...item,
+          is_used: item.is_used === true || item.is_used === 'true' || item.is_used === 1 || Boolean(item.used_by && String(item.used_by).trim().length > 0)
+        }));
         renderLicenses();
       } catch (e) {
         licContainer.innerHTML = `<div style="padding: 1rem; color: #EF4444; font-size:0.85rem;">Eccezione: ${e.message}</div>`;
