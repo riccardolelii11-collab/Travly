@@ -173,6 +173,7 @@ create table if not exists travly_licenses (
 );
 
 alter table travly_licenses enable row level security;
+drop policy if exists "Accesso pubblico licenze" on travly_licenses;
 drop policy if exists "Public select licenses" on travly_licenses;
 create policy "Public select licenses" on travly_licenses for select using (true);
 drop policy if exists "Public insert licenses" on travly_licenses;

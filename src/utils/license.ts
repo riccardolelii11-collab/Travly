@@ -510,6 +510,7 @@ alter table travly_licenses add column if not exists deleted_at timestamp with t
 
 alter table travly_licenses enable row level security;
 
+drop policy if exists "Accesso pubblico licenze" on travly_licenses;
 drop policy if exists "Public select licenses" on travly_licenses;
 create policy "Public select licenses" on travly_licenses for select using (true);
 
