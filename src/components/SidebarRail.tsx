@@ -106,7 +106,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
       </div>
 
       {/* Desktop & Tablet Left Navigation Sidebar (>= md) */}
-      <aside className="hidden md:flex sticky top-0 self-start flex-none w-[210px] lg:w-[236px] h-screen bg-gradient-to-b from-[#0B1B3A] to-[#0E2A50] border-r border-white/10 flex-col p-[22px_14px] lg:p-[22px_16px] gap-[6px] text-white z-40 shadow-lg">
+      <aside className="hidden md:flex fixed top-0 left-0 bottom-0 flex-none w-[210px] lg:w-[236px] h-screen bg-gradient-to-b from-[#0B1B3A] to-[#0E2A50] border-r border-white/10 flex-col p-[22px_14px] lg:p-[22px_16px] gap-[6px] text-white z-40 shadow-lg overflow-y-auto">
         {/* Brand Header */}
         <div className="brand flex items-center gap-[11px] p-[6px_8px_22px]">
           <div className="mark w-[36px] h-[36px] rounded-[11px] bg-[#12B5A5] grid place-items-center text-[#062420] font-extrabold text-[18px] shadow-[0_6px_18px_rgba(18,181,165,0.4)]">

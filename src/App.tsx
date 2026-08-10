@@ -771,7 +771,7 @@ export default function App() {
   };
 
   return (
-    <div className="shell flex flex-col lg:flex-row min-h-screen bg-[var(--bg)] text-[var(--ink)] font-sans antialiased transition-colors duration-300 max-w-full overflow-x-hidden">
+    <div className="shell flex flex-col md:flex-row min-h-screen bg-[var(--bg)] text-[var(--ink)] font-sans antialiased transition-colors duration-300 max-w-full overflow-x-hidden">
       {/* Navigation Rail & Mobile Drawer */}
       <SidebarRail
         activePage={state.page}
@@ -791,7 +791,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="main flex-1 min-w-0 max-w-full overflow-x-hidden p-3 pt-3 pb-24 sm:p-5 sm:pb-24 lg:p-[24px_40px_72px]">
+      <main className="main flex-1 min-w-0 max-w-full md:ml-[210px] lg:ml-[236px] overflow-x-hidden p-3 pt-3 pb-24 sm:p-5 sm:pb-24 lg:p-[24px_40px_72px]">
         <HeaderTopbar
           trips={db.trips}
           activeId={db.activeId}
