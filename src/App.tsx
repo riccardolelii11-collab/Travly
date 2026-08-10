@@ -36,7 +36,7 @@ import { TooltipBox } from './components/TooltipBox';
 import { SupabaseModal } from './components/SupabaseModal';
 import { ActivationModal } from './components/ActivationModal';
 import { AdminGeneratorModal } from './components/AdminGeneratorModal';
-import { isAppActivated, clearAppActivated, markAccountDeletedInSupabase } from './utils/license';
+import { isAppActivated, clearAppActivated, markAccountDeletedInSupabase, verifyLoginAccount } from './utils/license';
 import {
   getSupabaseCredentials,
   getSupabaseClient,
@@ -335,6 +335,12 @@ export default function App() {
   };
 
   const handleLoginAccount = async (acc: string, pass: string) => {
+    // Verify that this account exists and has a valid activated license
+    const verifyRes = await verifyLoginAccount(acc, pass);
+    if (!verifyRes.success) {
+      throw new Error(verifyRes.message || `L'account '${acc}' non esiste o è stato eliminato.`);
+    }
+
     saveStoredUserAccount(acc, pass);
     setAccountName(acc);
     setWelcomeOpen(false); // Hide example modal

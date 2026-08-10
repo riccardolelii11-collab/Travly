@@ -219,7 +219,11 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                   type="text"
                   value={accountInput}
                   onChange={(e) => setAccountInput(e.target.value)}
-                  placeholder={isIt ? 'es. mario.rossi o mario@gmail.com' : 'e.g. john.doe or john@gmail.com'}
+                  placeholder={
+                    mode === 'activate'
+                      ? (isIt ? 'es. mario.rossi o mario@gmail.com' : 'e.g. john.doe or john@gmail.com')
+                      : (isIt ? 'Inserisci il tuo nome account o email' : 'Enter your account name or email')
+                  }
                   className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
                   autoFocus={mode === 'login'}
                 />
@@ -239,7 +243,11 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                   type={showPass ? 'text' : 'password'}
                   value={passInput}
                   onChange={(e) => setPassInput(e.target.value)}
-                  placeholder={isIt ? 'Crea una password sicura' : 'Create a password'}
+                  placeholder={
+                    mode === 'activate'
+                      ? (isIt ? 'Crea una password sicura' : 'Create a secure password')
+                      : (isIt ? 'Inserisci la tua password' : 'Enter your password')
+                  }
                   className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
                 />
                 <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />

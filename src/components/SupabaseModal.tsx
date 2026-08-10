@@ -415,7 +415,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
                     <User className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--sub)]" />
                     <input
                       type="text"
-                      placeholder="es. riccardo_viaggi"
+                      placeholder={isIt ? 'Inserisci il tuo nome account' : 'Enter your account name'}
                       value={inputAccount}
                       onChange={(e) => setInputAccount(e.target.value)}
                       className="w-full bg-[var(--card)] border border-[var(--line)] rounded-[9px] pl-8 pr-3 py-2 text-[13px] font-medium outline-none focus:border-[#3ECF8E]"
@@ -431,7 +431,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
                     <Key className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--sub)]" />
                     <input
                       type="password"
-                      placeholder="••••••••"
+                      placeholder={isIt ? 'Inserisci la tua password' : 'Enter your password'}
                       value={inputPass}
                       onChange={(e) => setInputPass(e.target.value)}
                       className="w-full bg-[var(--card)] border border-[var(--line)] rounded-[9px] pl-8 pr-3 py-2 text-[13px] font-medium outline-none focus:border-[#3ECF8E]"
