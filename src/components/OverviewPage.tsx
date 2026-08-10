@@ -427,8 +427,27 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
             </div>
             <div className="sub text-[11.5px] sm:text-[12px] text-[#A9C4E4] font-semibold mt-[2px] font-mono">
               {state.departure
-                ? `${t('departs', lang)} ${fdate(new Date(state.departure + 'T00:00:00'), lang)}`
+                ? `${t('departs', lang)} ${fdate(new Date(state.departure + 'T00:00:00'), lang)}${
+                    state.returnDate
+                      ? ` → ${lang === 'it' ? 'Rientro' : 'Return'}: ${fdate(
+                          new Date(state.returnDate + 'T00:00:00'),
+                          lang
+                        )}`
+                      : ''
+                  }`
                 : '—'}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2 mt-1.5">
+              {state.weather && (
+                <span className="text-[11px] font-extrabold bg-[#12B5A5]/20 text-[#6fe6d6] px-2.5 py-0.5 rounded-full border border-[#12B5A5]/30">
+                  {state.weather}
+                </span>
+              )}
+              {state.contributors.length > 0 && (
+                <span className="text-[11px] font-extrabold bg-white/10 text-[#A9C4E4] px-2.5 py-0.5 rounded-full border border-white/15">
+                  👥 {state.contributors.length} {state.contributors.length === 1 ? 'persona' : 'persone'}
+                </span>
+              )}
             </div>
           </div>
         </div>

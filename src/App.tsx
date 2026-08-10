@@ -715,12 +715,16 @@ export default function App() {
 
     if (res.destination) {
       baseData.destination = res.destination;
+      baseData.tripLabel = res.destination;
     }
     if (res.departure) {
       baseData.departure = res.departure;
     }
     if (res.returnDate) {
       baseData.returnDate = res.returnDate;
+    }
+    if (res.weather) {
+      baseData.weather = res.weather;
     }
     if (res.contributors && res.contributors.length > 0) {
       baseData.contributors = res.contributors.map((c) => ({
@@ -735,8 +739,19 @@ export default function App() {
       }));
     }
 
-    saveDb({ ...db, hideCk: false, seen: true });
-    updateActiveTripData(() => baseData);
+    const updatedTrips = db.trips.map((t) =>
+      t.id === db.activeId ? { ...t, data: baseData } : t
+    );
+
+    saveDb({
+      ...db,
+      hideCk: false,
+      seen: true,
+      lang: baseData.lang,
+      theme: baseData.theme,
+      page: baseData.page,
+      trips: updatedTrips,
+    });
     setWelcomeOpen(false);
   };
 
@@ -785,6 +800,8 @@ export default function App() {
           }
           destination={state.destination}
           departure={state.departure}
+          returnDate={state.returnDate}
+          weather={state.weather}
           currency={state.currency}
           lang={state.lang}
           onSwitchTrip={handleSwitchTrip}
@@ -797,6 +814,12 @@ export default function App() {
           }
           onUpdateDeparture={(val) =>
             updateActiveTripData((prev) => ({ ...prev, departure: val }))
+          }
+          onUpdateReturnDate={(val) =>
+            updateActiveTripData((prev) => ({ ...prev, returnDate: val }))
+          }
+          onUpdateWeather={(val) =>
+            updateActiveTripData((prev) => ({ ...prev, weather: val }))
           }
           onRequestChangeCurrency={handleRequestChangeCurrency}
           onSelectLang={handleSelectLang}
@@ -1091,6 +1114,7 @@ export default function App() {
       <WelcomeModal
         isOpen={welcomeOpen}
         lang={state.lang}
+        initialData={state}
         onStartMyTrip={handleStartMyTrip}
         onExploreDemo={handleExploreDemo}
       />

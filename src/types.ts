@@ -51,6 +51,7 @@ export interface TripData {
   destination: string;
   departure: string;
   returnDate?: string;
+  weather?: string;
   tripLabel?: string;
   contributors: ContributorItem[];
   budget: CategoryItem[];

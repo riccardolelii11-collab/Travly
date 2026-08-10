@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Language } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Language, TripData } from '../types';
 import { catName, NUM, t } from '../utils/calculations';
 import { CATS } from '../constants/translations';
 import { TRIP_TEMPLATES, TripTemplate } from '../constants/templates';
@@ -8,6 +8,7 @@ export interface OnboardingResult {
   destination: string;
   departure: string;
   returnDate: string;
+  weather: string;
   estimatedBudget: number;
   templateKey: string;
   contributors: { name: string; sharePct: number }[];
@@ -17,13 +18,23 @@ export interface OnboardingResult {
 interface WelcomeModalProps {
   isOpen: boolean;
   lang: Language;
+  initialData?: Partial<TripData>;
   onStartMyTrip: (result: OnboardingResult) => void;
   onExploreDemo: () => void;
 }
 
+const WEATHER_OPTIONS = [
+  '☀️ Soleggiato / Caldo',
+  '🏖️ Mare / Spiaggia',
+  '🌤️ Mite / Città',
+  '❄️ Neve / Freddo',
+  '🌧️ Variabile / Piovoso',
+];
+
 export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   isOpen,
   lang,
+  initialData,
   onStartMyTrip,
   onExploreDemo,
 }) => {
@@ -33,6 +44,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
   const [destination, setDestination] = useState<string>('');
   const [departure, setDeparture] = useState<string>('');
   const [returnDate, setReturnDate] = useState<string>('');
+  const [weather, setWeather] = useState<string>('☀️ Soleggiato / Caldo');
   const [estimatedBudget, setEstimatedBudget] = useState<string>('1500');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('city');
 
@@ -41,6 +53,25 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
     lang === 'it' ? 'Io' : 'Me',
   ]);
   const [newContribName, setNewContribName] = useState<string>('');
+
+  // Sync initialData when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData?.destination) setDestination(initialData.destination);
+      if (initialData?.departure) setDeparture(initialData.departure);
+      if (initialData?.returnDate) setReturnDate(initialData.returnDate);
+      if (initialData?.weather) setWeather(initialData.weather);
+      
+      if (initialData?.contributors && initialData.contributors.length > 0) {
+        setContributorsList(initialData.contributors.map((c) => c.name));
+      }
+
+      if (initialData?.budget && initialData.budget.length > 0) {
+        const totalB = initialData.budget.reduce((acc, b) => acc + NUM(b.amount), 0);
+        if (totalB > 0) setEstimatedBudget(String(totalB));
+      }
+    }
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -74,7 +105,6 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
     const allocations = calculateAllocations();
     const shareEach = Math.round(100 / Math.max(1, contributorsList.length));
     const finalContribs = contributorsList.map((name, i) => {
-      // adjust last one for 100% total
       const sharePct =
         i === contributorsList.length - 1
           ? 100 - shareEach * (contributorsList.length - 1)
@@ -86,6 +116,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
       destination: destination.trim(),
       departure,
       returnDate,
+      weather,
       estimatedBudget: currentBudgetNum,
       templateKey: selectedTemplate,
       contributors: finalContribs,
@@ -103,9 +134,9 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               {t('w_wizard_title', lang)}
             </span>
             <h3 className="text-[19px] font-extrabold tracking-tight mt-1">
-              {step === 1 && t('w_step1_title', lang)}
-              {step === 2 && t('w_step2_title', lang)}
-              {step === 3 && t('w_step3_title', lang)}
+              {step === 1 && (lang === 'it' ? 'Dove vuoi andare?' : 'Where are you going?')}
+              {step === 2 && (lang === 'it' ? 'Date e Meteo previsto' : 'Dates & Weather')}
+              {step === 3 && (lang === 'it' ? 'Budget e Compagni' : 'Budget & Companions')}
             </h3>
           </div>
 
@@ -130,7 +161,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
         {/* STEP 1: Destination */}
         {step === 1 && (
           <div className="space-y-4 animate-[fade_0.2s_ease]">
-            <p className="text-[13.5px] text-[var(--sub)]">{t('w_step1_sub', lang)}</p>
+            <p className="text-[13.5px] text-[var(--sub)]">
+              {lang === 'it'
+                ? 'Inserisci il nome della tua destinazione per iniziare la pianificazione.'
+                : 'Enter your destination name to start planning.'}
+            </p>
             <div className="space-y-1.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
                 {t('destination', lang)}
@@ -166,15 +201,19 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
           </div>
         )}
 
-        {/* STEP 2: Dates */}
+        {/* STEP 2: Dates & Weather */}
         {step === 2 && (
           <div className="space-y-4 animate-[fade_0.2s_ease]">
-            <p className="text-[13.5px] text-[var(--sub)]">{t('w_step2_sub', lang)}</p>
+            <p className="text-[13.5px] text-[var(--sub)]">
+              {lang === 'it'
+                ? 'Scegli la data di partenza (inizio), la data di arrivo/rientro e il meteo previsto.'
+                : 'Select departure (start) date, return (arrival) date and weather.'}
+            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
-                  {t('departure', lang)}
+                  {lang === 'it' ? 'Data Inizio / Partenza' : 'Departure Date'}
                 </label>
                 <input
                   type="date"
@@ -186,7 +225,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
 
               <div className="space-y-1.5">
                 <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
-                  {t('travel_return_date', lang)}
+                  {lang === 'it' ? 'Data Arrivo / Rientro' : 'Return / Arrival Date'}
                 </label>
                 <input
                   type="date"
@@ -197,18 +236,45 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                 />
               </div>
             </div>
+
+            {/* Weather Selector */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
+                {lang === 'it' ? 'Meteo e Clima Previsto' : 'Expected Weather'}
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {WEATHER_OPTIONS.map((wOpt) => (
+                  <button
+                    key={wOpt}
+                    type="button"
+                    onClick={() => setWeather(wOpt)}
+                    className={`p-2.5 text-left text-[12.5px] font-bold rounded-[12px] border transition-all cursor-pointer ${
+                      weather === wOpt
+                        ? 'bg-[#12B5A5]/15 border-[#12B5A5] text-[#12B5A5] shadow-xs'
+                        : 'bg-[var(--soft)] border-[var(--hair)] hover:border-[var(--line)] text-[var(--ink)]'
+                    }`}
+                  >
+                    {wOpt}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
         {/* STEP 3: Style Template, Budget & Companions */}
         {step === 3 && (
           <div className="space-y-4 animate-[fade_0.2s_ease]">
-            <p className="text-[13.5px] text-[var(--sub)]">{t('w_step3_sub', lang)}</p>
+            <p className="text-[13.5px] text-[var(--sub)]">
+              {lang === 'it'
+                ? 'Imposta il budget stimato e quanti siete a viaggiare.'
+                : 'Set estimated budget and companions count.'}
+            </p>
 
             {/* Estimated Budget Input */}
             <div className="space-y-1.5">
               <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
-                {lang === 'it' ? 'Budget stimato totale' : 'Total estimated budget'}
+                {lang === 'it' ? 'Budget stimato totale (€)' : 'Total estimated budget'}
               </label>
               <input
                 type="number"
@@ -224,7 +290,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
                 {lang === 'it' ? 'Modello di viaggio' : 'Trip Preset Template'}
               </label>
-              <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
                 {TRIP_TEMPLATES.map((tmpl) => {
                   const isSelected = selectedTemplate === tmpl.key;
                   return (
@@ -250,18 +316,21 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
               </div>
             </div>
 
-            {/* Companions / Contributors */}
+            {/* Companions / Contributors ("Quanti siete") */}
             <div className="space-y-2 pt-1 border-t border-[var(--line)]">
-              <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
-                {t('team_title', lang)}
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[12px] font-bold uppercase tracking-wider text-[var(--sub)]">
+                  {lang === 'it' ? `In quanti siete? (${contributorsList.length} ${contributorsList.length === 1 ? 'persona' : 'persone'})` : `Travelers (${contributorsList.length})`}
+                </label>
+              </div>
+
               <div className="flex flex-wrap gap-2 items-center">
                 {contributorsList.map((cName, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--soft)] border border-[var(--hair)] rounded-full text-[12.5px] font-bold text-[var(--ink)]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[var(--soft)] border border-[var(--line)] rounded-full text-[12.5px] font-bold text-[var(--ink)]"
                   >
-                    <span>{cName}</span>
+                    <span>👥 {cName}</span>
                     {contributorsList.length > 1 && (
                       <button
                         type="button"
@@ -274,13 +343,14 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                   </span>
                 ))}
               </div>
+
               <div className="flex gap-2 pt-1">
                 <input
                   type="text"
                   value={newContribName}
                   onChange={(e) => setNewContribName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddContributor()}
-                  placeholder={lang === 'it' ? '+ Aggiungi compagno (es. Marco)...' : '+ Add companion...'}
+                  placeholder={lang === 'it' ? '+ Aggiungi persona (es. Marco)...' : '+ Add traveler...'}
                   className="flex-1 text-[12.5px] font-medium p-2 bg-[var(--card)] border border-[var(--line)] rounded-[10px] text-[var(--ink)] outline-none focus:border-[#12B5A5]"
                 />
                 <button
@@ -332,7 +402,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
                 onClick={handleFinish}
                 className="px-6 py-2.5 rounded-[12px] bg-[#12B5A5] hover:bg-[#0fa092] text-[#06231f] text-[14px] font-black shadow-md cursor-pointer transition-all flex items-center gap-1"
               >
-                {t('w_btn_finish', lang)}
+                ✓ {lang === 'it' ? 'Crea Itinerario' : 'Create Itinerary'}
               </button>
             )}
           </div>

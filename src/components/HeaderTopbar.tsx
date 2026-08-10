@@ -9,6 +9,8 @@ interface HeaderTopbarProps {
   tripLabel: string;
   destination: string;
   departure: string;
+  returnDate?: string;
+  weather?: string;
   currency: Currency;
   lang: Language;
   onSwitchTrip: (id: string) => void;
@@ -16,6 +18,8 @@ interface HeaderTopbarProps {
   onUpdateTripLabel: (val: string) => void;
   onUpdateDestination: (val: string) => void;
   onUpdateDeparture: (val: string) => void;
+  onUpdateReturnDate?: (val: string) => void;
+  onUpdateWeather?: (val: string) => void;
   onRequestChangeCurrency: (newCurr: Currency) => void;
   onSelectLang: (lang: Language) => void;
   onSave: () => void;
@@ -41,6 +45,8 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
   tripLabel,
   destination,
   departure,
+  returnDate,
+  weather,
   currency,
   lang,
   onSwitchTrip,
@@ -48,6 +54,8 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
   onUpdateTripLabel,
   onUpdateDestination,
   onUpdateDeparture,
+  onUpdateReturnDate,
+  onUpdateWeather,
   onRequestChangeCurrency,
   onSelectLang,
   onSave,
@@ -146,6 +154,29 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
             className="date num text-[13.5px] sm:text-[15px] font-bold font-mono border border-[var(--hair)] sm:border-none bg-[var(--soft)] sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-lg sm:rounded-none text-[var(--ink)] outline-none cursor-pointer"
           />
         </div>
+
+        {/* Return date */}
+        {onUpdateReturnDate && (
+          <div className="field flex items-center justify-between sm:block pt-1 sm:pt-0 border-t border-[var(--hair)] sm:border-0">
+            <label className="block text-[10.5px] font-bold uppercase tracking-widest text-[var(--sub)] mb-[2px]">
+              {lang === 'it' ? 'Rientro' : 'Return'}
+            </label>
+            <input
+              type="date"
+              value={returnDate || ''}
+              min={departure || undefined}
+              onChange={(e) => onUpdateReturnDate(e.target.value)}
+              className="date num text-[13.5px] sm:text-[15px] font-bold font-mono border border-[var(--hair)] sm:border-none bg-[var(--soft)] sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-lg sm:rounded-none text-[var(--ink)] outline-none cursor-pointer"
+            />
+          </div>
+        )}
+
+        {/* Weather chip */}
+        {weather && (
+          <div className="hidden lg:flex items-center gap-1 text-[12px] font-extrabold bg-[#12B5A5]/10 text-[#12B5A5] px-2.5 py-1 rounded-full border border-[#12B5A5]/20">
+            <span>{weather}</span>
+          </div>
+        )}
       </div>
 
       {/* Tools on the right */}
