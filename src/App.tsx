@@ -37,6 +37,7 @@ import { SupabaseModal } from './components/SupabaseModal';
 import { ActivationModal } from './components/ActivationModal';
 import { AdminGeneratorModal } from './components/AdminGeneratorModal';
 import { isAppActivated, clearAppActivated, markAccountDeletedInSupabase, verifyLoginAccount } from './utils/license';
+import { pb } from './utils/pocketbase';
 import {
   getSupabaseCredentials,
   getSupabaseClient,
@@ -335,6 +336,13 @@ export default function App() {
   };
 
   const handleLoginAccount = async (acc: string, pass: string) => {
+    // Attempt PocketBase login
+    try {
+      await pb.collection('users').authWithPassword(acc.trim(), pass.trim());
+    } catch (pbErr: any) {
+      console.warn('PocketBase auth in handleLoginAccount notice:', pbErr);
+    }
+
     // Verify that this account exists and has a valid activated license
     const verifyRes = await verifyLoginAccount(acc, pass);
     if (!verifyRes.success) {
