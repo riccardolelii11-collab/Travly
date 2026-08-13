@@ -80,6 +80,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   const [mode, setMode] = useState<'activate' | 'login'>('activate');
   const [code, setCode] = useState('');
   const [accountInput, setAccountInput] = useState(accountName);
+  const [emailInput, setEmailInput] = useState('');
   const [passInput, setPassInput] = useState('');
   const [confirmPassInput, setConfirmPassInput] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -110,37 +111,47 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (mode === 'activate' && !code.trim()) {
-      setStatus({
-        success: false,
-        message: isIt
-          ? 'Inserisci il tuo Codice di Attivazione (es. TRV-XXXX-XXXX-XXXX).'
-          : 'Please enter your Activation Code.',
-      });
-      return;
-    }
-
-    if (!accountInput.trim()) {
-      setStatus({
-        success: false,
-        message: isIt
-          ? 'Inserisci il Nome Account Travly (Email o Nome Utente).'
-          : 'Please enter your Travly Account Name.',
-      });
-      return;
-    }
-
-    if (!passInput.trim()) {
-      setStatus({
-        success: false,
-        message: isIt
-          ? 'Inserisci la Password del tuo Account per proteggere la tua licenza.'
-          : 'Please enter your Account Password.',
-      });
-      return;
-    }
-
     if (mode === 'activate') {
+      if (!code.trim()) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Inserisci il tuo Codice di Attivazione (es. TRV-XXXX-XXXX-XXXX).'
+            : 'Please enter your Activation Code.',
+        });
+        return;
+      }
+
+      if (!accountInput.trim()) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Inserisci il Nome Account Travly (Username).'
+            : 'Please enter your Travly Account Name (Username).',
+        });
+        return;
+      }
+
+      if (!emailInput.trim() || !emailInput.includes('@')) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Inserisci un indirizzo email valido (es. mario.rossi@gmail.com).'
+            : 'Please enter a valid email address.',
+        });
+        return;
+      }
+
+      if (!passInput.trim()) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Inserisci la Password del tuo Account per proteggere la tua licenza.'
+            : 'Please enter your Account Password.',
+        });
+        return;
+      }
+
       if (!confirmPassInput.trim()) {
         setStatus({
           success: false,
@@ -157,6 +168,26 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
           message: isIt
             ? 'Le password inserite non coincidono. Verifica e riprova.'
             : 'Passwords do not match. Please verify.',
+        });
+        return;
+      }
+    } else {
+      if (!accountInput.trim()) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Inserisci il Nome Account Travly o Email.'
+            : 'Please enter your Travly Account Name or Email.',
+        });
+        return;
+      }
+
+      if (!passInput.trim()) {
+        setStatus({
+          success: false,
+          message: isIt
+            ? 'Inserisci la Password del tuo Account.'
+            : 'Please enter your Account Password.',
         });
         return;
       }
@@ -182,8 +213,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       result = await verifyAndActivateCode(code.trim(), accountInput.trim(), passInput.trim());
 
       if (result.success) {
-        const rawEmail = accountInput.trim();
-        const email = rawEmail.includes('@') ? rawEmail : `${rawEmail.replace(/\s+/g, '')}@travly.app`;
+        const email = emailInput.trim();
         const password = passInput.trim();
 
         try {
@@ -543,11 +573,11 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                   <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
                     {mode === 'activate'
                       ? isIt
-                        ? '2. Nome Account Travly (Email o Nome Utente)'
-                        : '2. Travly Account Name (Email or Username)'
+                        ? '2. Nome Account Travly (Username)'
+                        : '2. Travly Account Name (Username)'
                       : isIt
-                      ? '1. Nome Account Travly'
-                      : '1. Travly Account Name'}
+                      ? '1. Nome Account Travly o Email'
+                      : '1. Travly Account Name or Email'}
                   </label>
                   <div className="relative">
                     <input
@@ -557,8 +587,8 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                       placeholder={
                         mode === 'activate'
                           ? isIt
-                            ? 'es. mario.rossi o mario@gmail.com'
-                            : 'e.g. john.doe or john@gmail.com'
+                            ? 'es. mario.rossi'
+                            : 'e.g. john.doe'
                           : isIt
                           ? 'Inserisci il tuo nome account o email'
                           : 'Enter your account name or email'
@@ -570,13 +600,32 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                   </div>
                 </div>
 
-                {/* Password Input */}
+                {/* Email Input (Field 3 on Activate Mode) */}
+                {mode === 'activate' && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                      {isIt ? '3. Indirizzo Email' : '3. Email Address'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder={isIt ? 'es. mario.rossi@gmail.com' : 'e.g. john.doe@gmail.com'}
+                        className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                      />
+                      <Mail className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Password Input (Field 4 on Activate, Field 2 on Login) */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
                     {mode === 'activate'
                       ? isIt
-                        ? '3. Password Account Travly'
-                        : '3. Travly Account Password'
+                        ? '4. Password Account Travly'
+                        : '4. Travly Account Password'
                       : isIt
                       ? '2. Password Account'
                       : '2. Account Password'}
@@ -626,11 +675,11 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                   )}
                 </div>
 
-                {/* Confirm Password Input (Only on Activate Tab) */}
+                {/* Confirm Password Input (Field 5 on Activate Tab) */}
                 {mode === 'activate' && (
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
-                      {isIt ? '4. Ripeti Password' : '4. Confirm Password'}
+                      {isIt ? '5. Ripeti Password' : '5. Confirm Password'}
                     </label>
                     <div className="relative">
                       <input
@@ -706,7 +755,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                     loading ||
                     !accountInput.trim() ||
                     !passInput.trim() ||
-                    (mode === 'activate' && (!code.trim() || !confirmPassInput.trim()))
+                    (mode === 'activate' && (!code.trim() || !emailInput.trim() || !confirmPassInput.trim()))
                   }
                   className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
