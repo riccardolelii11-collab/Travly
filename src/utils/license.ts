@@ -1,5 +1,4 @@
 import { getSupabaseClient } from './supabase';
-import { pb } from './pocketbase';
 
 const ACTIVATED_STORAGE_KEY = 'travly_is_activated';
 const ACTIVE_CODE_STORAGE_KEY = 'travly_activated_code';
@@ -138,24 +137,6 @@ export async function verifyLoginAccount(
     return { success: false, message: 'Inserisci sia il nome account che la password.' };
   }
 
-  // PocketBase Authentication check
-  try {
-    const authData = await pb.collection('users').authWithPassword(cleanAcc, cleanPass);
-    if (authData && authData.token) {
-      localStorage.setItem('travly_user_account', cleanAcc);
-      localStorage.setItem('travly_user_password', cleanPass);
-      const codeToUse = getActivatedCode() || 'TRV-POCKETBASE';
-      setAppActivated(codeToUse);
-      return {
-        success: true,
-        code: codeToUse,
-        message: `Accesso PocketBase effettuato con successo! Benvenuto '${cleanAcc}'.`,
-      };
-    }
-  } catch (pbErr: any) {
-    console.warn('PocketBase auth in verifyLoginAccount notice:', pbErr);
-  }
-
   const supabase = getSupabaseClient();
 
   if (supabase) {
@@ -258,19 +239,6 @@ export async function verifyAndActivateCode(
   }
   if (!cleanPass) {
     return { success: false, message: 'Inserisci la Password per il tuo Account.' };
-  }
-
-  // PocketBase registration attempt
-  try {
-    await pb.collection('users').create({
-      email: cleanAcc,
-      password: cleanPass,
-      passwordConfirm: cleanPass,
-      emailVisibility: true,
-    });
-    await pb.collection('users').requestVerification(cleanAcc);
-  } catch (pbErr: any) {
-    console.warn('PocketBase create in verifyAndActivateCode notice:', pbErr);
   }
 
   const supabase = getSupabaseClient();
