@@ -12,10 +12,54 @@ import {
   Eye,
   EyeOff,
   LogIn,
+  Mail,
+  HelpCircle,
+  ArrowLeft,
+  Send,
 } from 'lucide-react';
 import { Language } from '../types';
 import { verifyAndActivateCode, verifyLoginAccount } from '../utils/license';
 import { pb } from '../lib/pocketbase';
+
+export function formatPocketBaseError(error: any): string {
+  if (!error) return 'Errore sconosciuto PocketBase';
+
+  // 1. Check for field-level validation errors in error.data.data or error.response.data.data
+  const dataObj = error?.data?.data || error?.response?.data?.data;
+  if (dataObj && typeof dataObj === 'object' && !Array.isArray(dataObj)) {
+    const details = Object.entries(dataObj)
+      .map(([field, errObj]: [string, any]) => {
+        const fieldName =
+          field === 'password'
+            ? 'Password'
+            : field === 'email'
+            ? 'Email'
+            : field === 'passwordConfirm'
+            ? 'Conferma Password'
+            : field;
+        const msg =
+          errObj?.message || (typeof errObj === 'string' ? errObj : JSON.stringify(errObj));
+        return `${fieldName}: ${msg}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    if (details) {
+      return details;
+    }
+  }
+
+  // 2. Top-level message in error.data.message
+  if (error?.data?.message) {
+    return error.data.message;
+  }
+
+  if (error?.message) {
+    return error.message;
+  }
+
+  return typeof error === 'string' ? error : 'Errore PocketBase durante l\'operazione';
+}
 
 interface ActivationModalProps {
   isOpen: boolean;
@@ -32,6 +76,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   accountName = '',
   isOverlay = true,
 }) => {
+  const [viewMode, setViewMode] = useState<'form' | 'verification_sent' | 'forgot_password'>('form');
   const [mode, setMode] = useState<'activate' | 'login'>('activate');
   const [code, setCode] = useState('');
   const [accountInput, setAccountInput] = useState(accountName);
@@ -41,6 +86,16 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+
+  // States for verification sent screen
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendStatus, setResendStatus] = useState<string | null>(null);
+
+  // States for forgot password screen
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetStatus, setResetStatus] = useState<{ success?: boolean; message?: string } | null>(null);
 
   useEffect(() => {
     if (accountName) {
@@ -114,6 +169,15 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
 
     if (mode === 'login') {
       result = await verifyLoginAccount(accountInput.trim(), passInput.trim());
+
+      if (result.success) {
+        try {
+          const emailOrUsername = accountInput.trim();
+          await pb.collection('users').authWithPassword(emailOrUsername, passInput.trim());
+        } catch (pbErr) {
+          console.warn('PocketBase authWithPassword notice:', pbErr);
+        }
+      }
     } else {
       result = await verifyAndActivateCode(code.trim(), accountInput.trim(), passInput.trim());
 
@@ -127,12 +191,20 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
             email: email,
             password: password,
             passwordConfirm: password,
+            emailVisibility: true,
           });
 
           await pb.collection('users').requestVerification(email);
+
+          // Show verification sent screen
+          setVerificationEmail(email);
+          setViewMode('verification_sent');
+          setLoading(false);
+          onActivated(accountInput.trim(), passInput.trim());
+          return;
         } catch (error: any) {
-          console.error(error);
-          const errMsg = error?.message || (typeof error === 'string' ? error : 'Errore PocketBase');
+          console.error('PocketBase registration error:', error);
+          const errMsg = formatPocketBaseError(error);
           alert(errMsg);
           setLoading(false);
           setStatus({
@@ -154,6 +226,63 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailToUse = resetEmail.trim();
+
+    if (!emailToUse) {
+      setResetStatus({
+        success: false,
+        message: isIt ? 'Inserisci un indirizzo email valido.' : 'Please enter a valid email address.',
+      });
+      return;
+    }
+
+    setResetLoading(true);
+    setResetStatus(null);
+
+    try {
+      await pb.collection('users').requestPasswordReset(emailToUse);
+      setResetStatus({
+        success: true,
+        message: isIt
+          ? 'Email di ripristino inviata con successo! Controlla la tua casella di posta.'
+          : 'Password reset email sent successfully! Please check your inbox.',
+      });
+    } catch (error: any) {
+      console.error('PocketBase requestPasswordReset error:', error);
+      const errMsg = formatPocketBaseError(error);
+      alert(errMsg);
+      setResetStatus({
+        success: false,
+        message: `Errore PocketBase: ${errMsg}`,
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!verificationEmail) return;
+    setResendLoading(true);
+    setResendStatus(null);
+    try {
+      await pb.collection('users').requestVerification(verificationEmail);
+      setResendStatus(
+        isIt
+          ? 'Nuova email di verifica inviata con successo!'
+          : 'New verification email sent successfully!'
+      );
+    } catch (error: any) {
+      console.error('Resend verification error:', error);
+      const errMsg = formatPocketBaseError(error);
+      alert(errMsg);
+      setResendStatus(`Errore PocketBase: ${errMsg}`);
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div
       className={`fixed inset-0 grid place-items-center z-[200] p-3 sm:p-4 overflow-y-auto ${
@@ -161,250 +290,462 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       }`}
     >
       <div className="bg-[var(--card)] border border-[var(--line)] w-full max-w-lg rounded-[22px] shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
-        {/* Modal Header */}
-        <div className="bg-gradient-to-r from-[#0F2847] to-[#16365C] p-6 text-white text-center relative">
-          <div className="w-14 h-14 bg-[#12B5A5]/20 border border-[#12B5A5]/40 rounded-2xl mx-auto grid place-items-center mb-3 text-[#12B5A5] shadow-inner">
-            <KeyRound className="w-7 h-7" />
-          </div>
-          <h2 className="text-xl font-extrabold tracking-tight">
-            {isIt ? 'Benvenuto su Travly' : 'Welcome to Travly'}
-          </h2>
-          <p className="text-xs text-[#9FB1CE] mt-1 max-w-sm mx-auto leading-relaxed">
-            {isIt
-              ? 'Attiva un nuovo codice o accedi al tuo account per sbloccare l\'applicazione.'
-              : 'Activate a code or log in to unlock the application.'}
-          </p>
-
-          {/* Tab Selection Switcher */}
-          <div className="flex bg-[#0B172A]/60 border border-white/10 rounded-xl p-1 mt-4 max-w-xs mx-auto text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('activate');
-                setStatus(null);
-              }}
-              className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                mode === 'activate'
-                  ? 'bg-[#12B5A5] text-white shadow-md'
-                  : 'text-[#9FB1CE] hover:text-white'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{isIt ? 'Attiva Codice' : 'Activate Code'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setStatus(null);
-              }}
-              className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                mode === 'login'
-                  ? 'bg-[#12B5A5] text-white shadow-md'
-                  : 'text-[#9FB1CE] hover:text-white'
-              }`}
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>{isIt ? 'Accedi' : 'Log In'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-5 sm:p-6 space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Activation Code Input (Required in Activate mode, optional in Login mode) */}
-            {mode === 'activate' && (
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
-                  {isIt ? '1. Codice di Attivazione' : '1. Activation Code'}
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    placeholder="TRV-XXXX-XXXX-XXXX"
-                    className="w-full bg-[var(--soft)] border-2 border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] px-4 py-3.5 text-center text-base sm:text-lg font-mono font-bold tracking-widest text-[var(--ink)] uppercase outline-none transition-all placeholder:text-[var(--sub)]/40 shadow-inner"
-                    autoFocus
-                  />
-                  <Lock className="w-4 h-4 text-[var(--sub)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-            )}
-
-            {/* Account Name Input */}
+        {/* VIEW MODE: Verification Sent Waiting Screen */}
+        {viewMode === 'verification_sent' && (
+          <div className="p-6 sm:p-8 text-center space-y-5">
+            <div className="w-16 h-16 bg-[#12B5A5]/20 border border-[#12B5A5]/40 rounded-2xl mx-auto grid place-items-center text-[#12B5A5] shadow-lg">
+              <Mail className="w-8 h-8" />
+            </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
-                {mode === 'activate'
-                  ? isIt ? '2. Nome Account Travly (Email o Nome Utente)' : '2. Travly Account Name (Email or Username)'
-                  : isIt ? '1. Nome Account Travly' : '1. Travly Account Name'}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={accountInput}
-                  onChange={(e) => setAccountInput(e.target.value)}
-                  placeholder={
-                    mode === 'activate'
-                      ? (isIt ? 'es. mario.rossi o mario@gmail.com' : 'e.g. john.doe or john@gmail.com')
-                      : (isIt ? 'Inserisci il tuo nome account o email' : 'Enter your account name or email')
-                  }
-                  className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
-                  autoFocus={mode === 'login'}
-                />
-                <User className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <h2 className="text-xl font-extrabold text-[var(--ink)]">
+                {isIt ? 'Controlla la tua Email' : 'Check Your Email'}
+              </h2>
+              <p className="text-xs text-[var(--sub)] mt-2 leading-relaxed">
+                {isIt
+                  ? 'Abbiamo inviato un\'email di verifica all\'indirizzo:'
+                  : 'We sent a verification email to:'}
+              </p>
+              <div className="mt-2 inline-block px-3 py-1.5 bg-[#12B5A5]/10 border border-[#12B5A5]/30 rounded-lg font-mono text-xs font-bold text-[#12B5A5]">
+                {verificationEmail}
               </div>
             </div>
 
-            {/* Password Input */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
-                {mode === 'activate'
-                  ? isIt ? '3. Password Account Travly' : '3. Travly Account Password'
-                  : isIt ? '2. Password Account' : '2. Account Password'}
-              </label>
-              <div className="relative">
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  value={passInput}
-                  onChange={(e) => setPassInput(e.target.value)}
-                  placeholder={
-                    mode === 'activate'
-                      ? (isIt ? 'Crea una password sicura' : 'Create a secure password')
-                      : (isIt ? 'Inserisci la tua password' : 'Enter your password')
-                  }
-                  className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
-                />
-                <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="p-4 bg-[var(--soft)] border border-[var(--line)] rounded-xl text-xs text-[var(--sub)] text-left leading-relaxed space-y-2">
+              <p className="font-semibold text-[var(--ink)]">
+                {isIt ? '📌 Prossimi Passi:' : '📌 Next Steps:'}
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-[var(--sub)]">
+                <li>
+                  {isIt
+                    ? 'Apri la tua casella di posta e trova la mail da PocketBase.'
+                    : 'Open your inbox and find the email from PocketBase.'}
+                </li>
+                <li>
+                  {isIt
+                    ? 'Controlla anche le cartelle Spam o Promozioni.'
+                    : 'Check your Spam or Promotions folder if not found.'}
+                </li>
+                <li>
+                  {isIt
+                    ? 'Clicca sul link di conferma per verificare il tuo account.'
+                    : 'Click the verification link to confirm your account.'}
+                </li>
+              </ul>
+            </div>
+
+            {resendStatus && (
+              <div className="p-3 bg-[#12B5A5]/10 border border-[#12B5A5]/30 rounded-lg text-xs font-semibold text-[#12B5A5]">
+                {resendStatus}
+              </div>
+            )}
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('form');
+                  setMode('login');
+                }}
+                className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>{isIt ? 'Ho Verificato / Torna al Login' : 'I Verified / Go to Login'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="w-full py-2.5 px-4 bg-transparent text-[var(--sub)] hover:text-[var(--ink)] font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {resendLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+                <span>{isIt ? 'Reinvia Email di Verifica' : 'Resend Verification Email'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW MODE: Forgot Password Screen */}
+        {viewMode === 'forgot_password' && (
+          <div className="p-6 sm:p-8 space-y-5">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('form');
+                  setMode('login');
+                }}
+                className="p-2 bg-[var(--soft)] border border-[var(--line)] rounded-xl text-[var(--sub)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className="text-lg font-extrabold text-[var(--ink)]">
+                  {isIt ? 'Password Dimenticata?' : 'Forgot Password?'}
+                </h2>
+                <p className="text-xs text-[var(--sub)]">
+                  {isIt ? 'Ripristina la password del tuo account PocketBase' : 'Reset your PocketBase password'}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                  {isIt ? 'Email Account' : 'Account Email'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder={isIt ? 'mario.rossi@gmail.com' : 'john.doe@gmail.com'}
+                    className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                    autoFocus
+                  />
+                  <Mail className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {resetStatus && (
+                <div
+                  className={`p-3.5 rounded-[12px] text-xs font-semibold flex items-start gap-2.5 ${
+                    resetStatus.success
+                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                      : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                  }`}
+                >
+                  {resetStatus.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  )}
+                  <span className="whitespace-pre-line">{resetStatus.message}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={resetLoading || !resetEmail.trim()}
+                className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resetLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{isIt ? 'Invio in corso...' : 'Sending...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>{isIt ? 'Invia Email di Ripristino' : 'Send Reset Email'}</span>
+                  </>
+                )}
+              </button>
+
+              <div className="text-center pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--sub)] hover:text-[var(--ink)] transition-colors p-1"
+                  onClick={() => {
+                    setViewMode('form');
+                    setMode('login');
+                  }}
+                  className="text-xs font-bold text-[var(--sub)] hover:text-[var(--ink)] transition-colors cursor-pointer"
                 >
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {isIt ? 'Torna al Form di Login' : 'Back to Login'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* VIEW MODE: Standard Form (Activate / Login) */}
+        {viewMode === 'form' && (
+          <>
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#0F2847] to-[#16365C] p-6 text-white text-center relative">
+              <div className="w-14 h-14 bg-[#12B5A5]/20 border border-[#12B5A5]/40 rounded-2xl mx-auto grid place-items-center mb-3 text-[#12B5A5] shadow-inner">
+                <KeyRound className="w-7 h-7" />
+              </div>
+              <h2 className="text-xl font-extrabold tracking-tight">
+                {isIt ? 'Benvenuto su Travly' : 'Welcome to Travly'}
+              </h2>
+              <p className="text-xs text-[#9FB1CE] mt-1 max-w-sm mx-auto leading-relaxed">
+                {isIt
+                  ? 'Attiva un nuovo codice o accedi al tuo account per sbloccare l\'applicazione.'
+                  : 'Activate a code or log in to unlock the application.'}
+              </p>
+
+              {/* Tab Selection Switcher */}
+              <div className="flex bg-[#0B172A]/60 border border-white/10 rounded-xl p-1 mt-4 max-w-xs mx-auto text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('activate');
+                    setStatus(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    mode === 'activate'
+                      ? 'bg-[#12B5A5] text-white shadow-md'
+                      : 'text-[#9FB1CE] hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isIt ? 'Attiva Codice' : 'Activate Code'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setStatus(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    mode === 'login'
+                      ? 'bg-[#12B5A5] text-white shadow-md'
+                      : 'text-[#9FB1CE] hover:text-white'
+                  }`}
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>{isIt ? 'Accedi' : 'Log In'}</span>
                 </button>
               </div>
             </div>
 
-            {/* Confirm Password Input (Only on Activate Tab) */}
-            {mode === 'activate' && (
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
-                  {isIt ? '4. Ripeti Password' : '4. Confirm Password'}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPass ? 'text' : 'password'}
-                    value={confirmPassInput}
-                    onChange={(e) => setConfirmPassInput(e.target.value)}
-                    placeholder={isIt ? 'Ripeti la password inserita sopra' : 'Repeat password'}
-                    className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
-                  />
-                  <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPass(!showConfirmPass)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--sub)] hover:text-[var(--ink)] transition-colors p-1"
-                  >
-                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Activation Code Input (Required in Activate mode) */}
+                {mode === 'activate' && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                      {isIt ? '1. Codice di Attivazione' : '1. Activation Code'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                        placeholder="TRV-XXXX-XXXX-XXXX"
+                        className="w-full bg-[var(--soft)] border-2 border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] px-4 py-3.5 text-center text-base sm:text-lg font-mono font-bold tracking-widest text-[var(--ink)] uppercase outline-none transition-all placeholder:text-[var(--sub)]/40 shadow-inner"
+                        autoFocus
+                      />
+                      <Lock className="w-4 h-4 text-[var(--sub)] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
 
-            {/* Optional Code in Login Mode if user wants to enter it */}
-            {mode === 'login' && (
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] mb-1.5">
-                  {isIt ? 'Codice di Attivazione (Opzionale)' : 'Activation Code (Optional)'}
-                </label>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="TRV-XXXX-XXXX-XXXX"
-                  className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[12px] px-3.5 py-2 text-xs font-mono font-bold tracking-wider text-[var(--ink)] uppercase outline-none transition-all placeholder:text-[var(--sub)]/40"
-                />
-              </div>
-            )}
-
-            {/* Explanatory Banners */}
-            <div className="space-y-2 pt-1">
-              <div className="p-3 bg-[#12B5A5]/10 border border-[#12B5A5]/25 rounded-[12px] flex items-start gap-2.5 text-xs text-[var(--sub)] leading-relaxed">
-                <Smartphone className="w-4 h-4 text-[#12B5A5] shrink-0 mt-0.5" />
+                {/* Account Name Input */}
                 <div>
-                  <strong className="text-[var(--ink)] block mb-0.5">
-                    {isIt ? '💡 Cambio Dispositivo & Multi-Accesso' : '💡 Multi-Device Access'}
-                  </strong>
-                  {isIt
-                    ? 'Puoi accedere con il tuo Account e Password su qualsiasi smartphone o computer per continuare a usare la tua licenza e sincronizzare i tuoi viaggi!'
-                    : 'Log in with your Account & Password on any device to use your license and sync your trips!'}
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                    {mode === 'activate'
+                      ? isIt
+                        ? '2. Nome Account Travly (Email o Nome Utente)'
+                        : '2. Travly Account Name (Email or Username)'
+                      : isIt
+                      ? '1. Nome Account Travly'
+                      : '1. Travly Account Name'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={accountInput}
+                      onChange={(e) => setAccountInput(e.target.value)}
+                      placeholder={
+                        mode === 'activate'
+                          ? isIt
+                            ? 'es. mario.rossi o mario@gmail.com'
+                            : 'e.g. john.doe or john@gmail.com'
+                          : isIt
+                          ? 'Inserisci il tuo nome account o email'
+                          : 'Enter your account name or email'
+                      }
+                      className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                      autoFocus={mode === 'login'}
+                    />
+                    <User className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
+
+                {/* Password Input */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                    {mode === 'activate'
+                      ? isIt
+                        ? '3. Password Account Travly'
+                        : '3. Travly Account Password'
+                      : isIt
+                      ? '2. Password Account'
+                      : '2. Account Password'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={passInput}
+                      onChange={(e) => setPassInput(e.target.value)}
+                      placeholder={
+                        mode === 'activate'
+                          ? isIt
+                            ? 'Crea una password sicura'
+                            : 'Create a secure password'
+                          : isIt
+                          ? 'Inserisci la tua password'
+                          : 'Enter your password'
+                      }
+                      className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                    />
+                    <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--sub)] hover:text-[var(--ink)] transition-colors p-1 cursor-pointer"
+                    >
+                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {/* Forgot Password Link in Login Mode */}
+                  {mode === 'login' && (
+                    <div className="flex justify-end pt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResetEmail(accountInput.includes('@') ? accountInput.trim() : '');
+                          setResetStatus(null);
+                          setViewMode('forgot_password');
+                        }}
+                        className="text-xs font-semibold text-[#12B5A5] hover:underline cursor-pointer flex items-center gap-1 transition-colors"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                        <span>{isIt ? 'Password dimenticata?' : 'Forgot password?'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Confirm Password Input (Only on Activate Tab) */}
+                {mode === 'activate' && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                      {isIt ? '4. Ripeti Password' : '4. Confirm Password'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPass ? 'text' : 'password'}
+                        value={confirmPassInput}
+                        onChange={(e) => setConfirmPassInput(e.target.value)}
+                        placeholder={isIt ? 'Ripeti la password inserita sopra' : 'Repeat password'}
+                        className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                      />
+                      <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPass(!showConfirmPass)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--sub)] hover:text-[var(--ink)] transition-colors p-1 cursor-pointer"
+                      >
+                        {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Optional Code in Login Mode if user wants to enter it */}
+                {mode === 'login' && (
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--sub)] mb-1.5">
+                      {isIt ? 'Codice di Attivazione (Opzionale)' : 'Activation Code (Optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      placeholder="TRV-XXXX-XXXX-XXXX"
+                      className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[12px] px-3.5 py-2 text-xs font-mono font-bold tracking-wider text-[var(--ink)] uppercase outline-none transition-all placeholder:text-[var(--sub)]/40"
+                    />
+                  </div>
+                )}
+
+                {/* Explanatory Banners */}
+                <div className="space-y-2 pt-1">
+                  <div className="p-3 bg-[#12B5A5]/10 border border-[#12B5A5]/25 rounded-[12px] flex items-start gap-2.5 text-xs text-[var(--sub)] leading-relaxed">
+                    <Smartphone className="w-4 h-4 text-[#12B5A5] shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-[var(--ink)] block mb-0.5">
+                        {isIt ? '💡 Cambio Dispositivo & Multi-Accesso' : '💡 Multi-Device Access'}
+                      </strong>
+                      {isIt
+                        ? 'Puoi accedere con il tuo Account e Password su qualsiasi smartphone o computer per continuare a usare la tua licenza e sincronizzare i tuoi viaggi!'
+                        : 'Log in with your Account & Password on any device to use your license and sync your trips!'}
+                    </div>
+                  </div>
+                </div>
+
+                {status && (
+                  <div
+                    className={`p-3.5 rounded-[12px] text-xs font-semibold flex items-start gap-2.5 ${
+                      status.success
+                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                        : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                    }`}
+                  >
+                    {status.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    )}
+                    <span className="whitespace-pre-line">{status.message}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={
+                    loading ||
+                    !accountInput.trim() ||
+                    !passInput.trim() ||
+                    (mode === 'activate' && (!code.trim() || !confirmPassInput.trim()))
+                  }
+                  className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{isIt ? 'Verifica in corso...' : 'Verifying...'}</span>
+                    </>
+                  ) : mode === 'activate' ? (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>{isIt ? 'Attiva e Crea Account' : 'Activate & Create Account'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      <span>{isIt ? 'Accedi e Sblocca' : 'Log In & Unlock'}</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Security Footer */}
+              <div className="pt-2 border-t border-[var(--hair)] flex items-center justify-between text-[11px] text-[var(--sub)] font-medium">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#12B5A5]" />
+                  {isIt ? 'Licenza personale e protetta' : 'Personal & secure license'}
+                </span>
+                <span className="text-[10px] text-[var(--sub)]/70">
+                  Travly v2.0
+                </span>
               </div>
             </div>
-
-            {status && (
-              <div
-                className={`p-3.5 rounded-[12px] text-xs font-semibold flex items-start gap-2.5 ${
-                  status.success
-                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
-                    : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
-                }`}
-              >
-                {status.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                )}
-                <span>{status.message}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={
-                loading ||
-                !accountInput.trim() ||
-                !passInput.trim() ||
-                (mode === 'activate' && (!code.trim() || !confirmPassInput.trim()))
-              }
-              className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>{isIt ? 'Verifica in corso...' : 'Verifying...'}</span>
-                </>
-              ) : mode === 'activate' ? (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>{isIt ? 'Attiva e Crea Account' : 'Activate & Create Account'}</span>
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  <span>{isIt ? 'Accedi e Sblocca' : 'Log In & Unlock'}</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Security Footer */}
-          <div className="pt-2 border-t border-[var(--hair)] flex items-center justify-between text-[11px] text-[var(--sub)] font-medium">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#12B5A5]" />
-              {isIt ? 'Licenza personale e protetta' : 'Personal & secure license'}
-            </span>
-            <span className="text-[10px] text-[var(--sub)]/70">
-              Travly v2.0
-            </span>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
 };
+
 
 
