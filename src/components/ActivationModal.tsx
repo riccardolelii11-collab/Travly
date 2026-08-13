@@ -404,8 +404,8 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       setResetConfirmStatus({
         success: true,
         message: isIt
-          ? 'Password aggiornata con successo! Reindirizzamento al login...'
-          : 'Password updated successfully! Redirecting to login...',
+          ? 'Password aggiornata con successo! Ora puoi effettuare il login.'
+          : 'Password updated successfully! You can now log in.',
       });
 
       // Clear token and transition to login form
@@ -418,7 +418,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
         setStatus({
           success: true,
           message: isIt
-            ? 'Password aggiornata con successo! Ora puoi accedere con la tua nuova password.'
+            ? 'Password aggiornata con successo! Ora puoi effettuare il login.'
             : 'Password updated successfully! You can now log in.',
         });
       }, 1500);
