@@ -19,7 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Language } from '../types';
-import { verifyAndActivateCode, verifyLoginAccount } from '../utils/license';
+import { verifyAndActivateCode, setAppActivated } from '../utils/license';
 import { pb, extractResetToken } from '../lib/pocketbase';
 
 export function formatPocketBaseError(error: any): string {
@@ -227,53 +227,77 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
     setLoading(true);
     setStatus(null);
 
-    let result: { success: boolean; message: string; code?: string };
-
     if (mode === 'login') {
-      result = await verifyLoginAccount(accountInput.trim(), passInput.trim());
-
-      if (result.success) {
-        try {
-          const emailOrUsername = accountInput.trim();
-          await pb.collection('users').authWithPassword(emailOrUsername, passInput.trim());
-        } catch (pbErr) {
-          console.warn('PocketBase authWithPassword notice:', pbErr);
-        }
-      }
-    } else {
-      result = await verifyAndActivateCode(code.trim(), accountInput.trim(), passInput.trim());
-
-      if (result.success) {
-        const email = emailInput.trim();
+      try {
+        const identity = accountInput.trim();
         const password = passInput.trim();
 
-        try {
-          await pb.collection('users').create({
-            email: email,
-            password: password,
-            passwordConfirm: password,
-            emailVisibility: true,
-          });
+        const authData = await pb.collection('users').authWithPassword(
+          identity,
+          password
+        );
 
-          await pb.collection('users').requestVerification(email);
+        setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
 
-          // Show verification sent screen
-          setVerificationEmail(email);
-          setViewMode('verification_sent');
+        const loggedUser = authData.record?.username || authData.record?.email || identity;
+
+        setStatus({
+          success: true,
+          message: isIt
+            ? 'Accesso eseguito con successo! Benvenuto in Travly.'
+            : 'Login successful! Welcome to Travly.',
+        });
+
+        setTimeout(() => {
           setLoading(false);
-          onActivated(accountInput.trim(), passInput.trim());
-          return;
-        } catch (error: any) {
-          console.error('PocketBase registration error:', error);
-          const errMsg = formatPocketBaseError(error);
-          alert(errMsg);
-          setLoading(false);
-          setStatus({
-            success: false,
-            message: `Errore PocketBase: ${errMsg}`,
-          });
-          return;
-        }
+          onActivated(loggedUser, password);
+        }, 800);
+        return;
+      } catch (error: any) {
+        console.error('PocketBase login error:', error);
+        setLoading(false);
+        const errMsg = error?.message || formatPocketBaseError(error) || 'Errore durante il login con PocketBase.';
+        setStatus({
+          success: false,
+          message: errMsg,
+        });
+        return;
+      }
+    }
+
+    // mode === 'activate'
+    const result = await verifyAndActivateCode(code.trim(), accountInput.trim(), passInput.trim());
+
+    if (result.success) {
+      const email = emailInput.trim();
+      const password = passInput.trim();
+
+      try {
+        await pb.collection('users').create({
+          email: email,
+          password: password,
+          passwordConfirm: password,
+          emailVisibility: true,
+        });
+
+        await pb.collection('users').requestVerification(email);
+
+        // Show verification sent screen
+        setVerificationEmail(email);
+        setViewMode('verification_sent');
+        setLoading(false);
+        onActivated(accountInput.trim(), passInput.trim());
+        return;
+      } catch (error: any) {
+        console.error('PocketBase registration error:', error);
+        const errMsg = formatPocketBaseError(error);
+        alert(errMsg);
+        setLoading(false);
+        setStatus({
+          success: false,
+          message: `Errore PocketBase: ${errMsg}`,
+        });
+        return;
       }
     }
 
