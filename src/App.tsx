@@ -359,8 +359,25 @@ export default function App() {
 
   const handleLoginAccount = async (acc: string, pass: string) => {
     try {
-      const authData = await pb.collection('users').authWithPassword(acc.trim(), pass.trim());
-      const loggedUser = authData.record?.username || authData.record?.email || acc.trim();
+      const identity = acc.trim();
+      const password = pass.trim();
+      let authIdentity = identity;
+
+      if (!identity.includes('@')) {
+        try {
+          const record = await pb
+            .collection('users')
+            .getFirstListItem(`name="${identity}" || username="${identity}"`);
+          if (record && record.email) {
+            authIdentity = record.email;
+          }
+        } catch (findErr) {
+          console.warn('PocketBase search user by name/username:', findErr);
+        }
+      }
+
+      const authData = await pb.collection('users').authWithPassword(authIdentity, password);
+      const loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
       saveStoredUserAccount(loggedUser, pass);
       setAccountName(loggedUser);
       setAppActivated(authData.record?.id || 'TRV-POCKETBASE');

@@ -231,15 +231,30 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       try {
         const identity = accountInput.trim();
         const password = passInput.trim();
+        let authIdentity = identity;
+
+        // If identity does not contain '@', search user by name or username to get email
+        if (!identity.includes('@')) {
+          try {
+            const record = await pb
+              .collection('users')
+              .getFirstListItem(`name="${identity}" || username="${identity}"`);
+            if (record && record.email) {
+              authIdentity = record.email;
+            }
+          } catch (findErr) {
+            console.warn('PocketBase search user by name/username:', findErr);
+          }
+        }
 
         const authData = await pb.collection('users').authWithPassword(
-          identity,
+          authIdentity,
           password
         );
 
         setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
 
-        const loggedUser = authData.record?.username || authData.record?.email || identity;
+        const loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
 
         setStatus({
           success: true,
@@ -271,12 +286,16 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
     if (result.success) {
       const email = emailInput.trim();
       const password = passInput.trim();
+      const rawUsername = accountInput.trim();
+      const cleanUsername = rawUsername.replace(/[^a-zA-Z0-9._-]/g, '_');
 
       try {
         await pb.collection('users').create({
           email: email,
           password: password,
           passwordConfirm: password,
+          username: cleanUsername,
+          name: rawUsername,
           emailVisibility: true,
         });
 
@@ -286,7 +305,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
         setVerificationEmail(email);
         setViewMode('verification_sent');
         setLoading(false);
-        onActivated(accountInput.trim(), passInput.trim());
+        onActivated(rawUsername, password);
         return;
       } catch (error: any) {
         console.error('PocketBase registration error:', error);
