@@ -16,10 +16,11 @@ import {
   HelpCircle,
   ArrowLeft,
   Send,
+  Check,
 } from 'lucide-react';
 import { Language } from '../types';
 import { verifyAndActivateCode, verifyLoginAccount } from '../utils/license';
-import { pb } from '../lib/pocketbase';
+import { pb, extractResetToken } from '../lib/pocketbase';
 
 export function formatPocketBaseError(error: any): string {
   if (!error) return 'Errore sconosciuto PocketBase';
@@ -76,7 +77,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   accountName = '',
   isOverlay = true,
 }) => {
-  const [viewMode, setViewMode] = useState<'form' | 'verification_sent' | 'forgot_password'>('form');
+  const [viewMode, setViewMode] = useState<'form' | 'verification_sent' | 'forgot_password' | 'reset_password'>('form');
   const [mode, setMode] = useState<'activate' | 'login'>('activate');
   const [code, setCode] = useState('');
   const [accountInput, setAccountInput] = useState(accountName);
@@ -98,11 +99,41 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   const [resetLoading, setResetLoading] = useState(false);
   const [resetStatus, setResetStatus] = useState<{ success?: boolean; message?: string } | null>(null);
 
+  // States for confirm reset password screen (coming from email link)
+  const [resetToken, setResetToken] = useState<string>('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmNewPass, setShowConfirmNewPass] = useState(false);
+  const [resetConfirmLoading, setResetConfirmLoading] = useState(false);
+  const [resetConfirmStatus, setResetConfirmStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+
   useEffect(() => {
     if (accountName) {
       setAccountInput(accountName);
     }
   }, [accountName]);
+
+  // Check URL token for password reset
+  useEffect(() => {
+    const checkResetToken = () => {
+      const token = extractResetToken();
+      if (token) {
+        setResetToken(token);
+        setViewMode('reset_password');
+        setResetConfirmStatus(null);
+      }
+    };
+
+    checkResetToken();
+    window.addEventListener('popstate', checkResetToken);
+    window.addEventListener('hashchange', checkResetToken);
+
+    return () => {
+      window.removeEventListener('popstate', checkResetToken);
+      window.removeEventListener('hashchange', checkResetToken);
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -313,6 +344,97 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
     }
   };
 
+  const handleConfirmPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!resetToken) {
+      setResetConfirmStatus({
+        success: false,
+        message: isIt ? 'Token di ripristino non trovato o non valido nell\'URL.' : 'Invalid or missing reset token in URL.',
+      });
+      return;
+    }
+
+    if (!newPassword.trim()) {
+      setResetConfirmStatus({
+        success: false,
+        message: isIt ? 'Inserisci la nuova password.' : 'Please enter the new password.',
+      });
+      return;
+    }
+
+    if (newPassword.trim().length < 8) {
+      setResetConfirmStatus({
+        success: false,
+        message: isIt
+          ? 'La password deve contenere almeno 8 caratteri.'
+          : 'Password must be at least 8 characters long.',
+      });
+      return;
+    }
+
+    if (newPassword.trim() !== confirmNewPassword.trim()) {
+      setResetConfirmStatus({
+        success: false,
+        message: isIt
+          ? 'Le nuove password non coincidono. Verifica e riprova.'
+          : 'Passwords do not match. Please verify.',
+      });
+      return;
+    }
+
+    setResetConfirmLoading(true);
+    setResetConfirmStatus(null);
+
+    try {
+      await pb.collection('users').confirmPasswordReset(
+        resetToken,
+        newPassword.trim(),
+        confirmNewPassword.trim()
+      );
+
+      // Clean token from URL
+      try {
+        if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      } catch {}
+
+      setResetConfirmStatus({
+        success: true,
+        message: isIt
+          ? 'Password aggiornata con successo! Reindirizzamento al login...'
+          : 'Password updated successfully! Redirecting to login...',
+      });
+
+      // Clear token and transition to login form
+      setTimeout(() => {
+        setResetToken('');
+        setPassInput(newPassword.trim());
+        setConfirmPassInput(newPassword.trim());
+        setViewMode('form');
+        setMode('login');
+        setStatus({
+          success: true,
+          message: isIt
+            ? 'Password aggiornata con successo! Ora puoi accedere con la tua nuova password.'
+            : 'Password updated successfully! You can now log in.',
+        });
+      }, 1500);
+    } catch (error: any) {
+      console.error('PocketBase confirmPasswordReset error:', error);
+      const errMsg = formatPocketBaseError(error);
+      alert(errMsg);
+      setResetConfirmStatus({
+        success: false,
+        message: `Errore PocketBase: ${errMsg}`,
+      });
+    } finally {
+      setResetConfirmLoading(false);
+    }
+  };
+
   return (
     <div
       className={`fixed inset-0 grid place-items-center z-[200] p-3 sm:p-4 overflow-y-auto ${
@@ -472,6 +594,126 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                   <>
                     <Send className="w-4 h-4" />
                     <span>{isIt ? 'Invia Email di Ripristino' : 'Send Reset Email'}</span>
+                  </>
+                )}
+              </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('form');
+                    setMode('login');
+                  }}
+                  className="text-xs font-bold text-[var(--sub)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+                >
+                  {isIt ? 'Torna al Form di Login' : 'Back to Login'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* VIEW MODE: Reset Password from Email Link */}
+        {viewMode === 'reset_password' && (
+          <div className="p-6 sm:p-8 space-y-5">
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 bg-[#12B5A5]/20 border border-[#12B5A5]/40 rounded-2xl mx-auto grid place-items-center text-[#12B5A5] shadow-lg">
+                <Lock className="w-7 h-7" />
+              </div>
+              <div>
+                <h2 className="text-xl font-extrabold text-[var(--ink)]">
+                  {isIt ? 'Reimposta la tua Password' : 'Reset Your Password'}
+                </h2>
+                <p className="text-xs text-[var(--sub)] mt-1">
+                  {isIt
+                    ? 'Inserisci la tua nuova password per il tuo account PocketBase'
+                    : 'Enter your new password for your PocketBase account'}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmPasswordReset} className="space-y-4 pt-1">
+              {/* Nuova Password */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                  {isIt ? '1. Nuova Password' : '1. New Password'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={isIt ? 'Minimo 8 caratteri' : 'At least 8 characters'}
+                    className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                    autoFocus
+                  />
+                  <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--sub)] hover:text-[var(--ink)] transition-colors p-1"
+                  >
+                    {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Ripeti Nuova Password */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--sub)] mb-2">
+                  {isIt ? '2. Ripeti Nuova Password' : '2. Confirm New Password'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmNewPass ? 'text' : 'password'}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder={isIt ? 'Ripeti la nuova password' : 'Repeat the new password'}
+                    className="w-full bg-[var(--soft)] border border-[var(--line)] focus:border-[#12B5A5] rounded-[14px] pl-11 pr-11 py-3 text-sm font-semibold text-[var(--ink)] outline-none transition-all placeholder:text-[var(--sub)]/40"
+                  />
+                  <Lock className="w-4 h-4 text-[#12B5A5] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmNewPass(!showConfirmNewPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--sub)] hover:text-[var(--ink)] transition-colors p-1"
+                  >
+                    {showConfirmNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {resetConfirmStatus && (
+                <div
+                  className={`p-3.5 rounded-[12px] text-xs font-semibold flex items-start gap-2.5 ${
+                    resetConfirmStatus.success
+                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                      : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                  }`}
+                >
+                  {resetConfirmStatus.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  )}
+                  <span className="whitespace-pre-line">{resetConfirmStatus.message}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={resetConfirmLoading || !newPassword.trim() || !confirmNewPassword.trim()}
+                className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resetConfirmLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{isIt ? 'Aggiornamento in corso...' : 'Updating...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>{isIt ? 'Aggiorna Password' : 'Update Password'}</span>
                   </>
                 )}
               </button>

@@ -47,6 +47,7 @@ import {
   clearStoredUserAccount,
   deleteAccountAndData,
 } from './utils/supabase';
+import { extractResetToken } from './lib/pocketbase';
 
 const STORAGE_KEY = 'travly_v2';
 const OLD_STORAGE_KEY = 'voyage_v1';
@@ -159,13 +160,35 @@ export default function App() {
   const [accountName, setAccountName] = useState<string>(storedAcc);
 
   const [isActivated, setIsActivated] = useState<boolean>(() => isAppActivated());
-  const [activationOpen, setActivationOpen] = useState<boolean>(!isAppActivated());
+  const [hasResetToken, setHasResetToken] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && !!extractResetToken();
+  });
+  const [activationOpen, setActivationOpen] = useState<boolean>(() => {
+    return !isAppActivated() || (typeof window !== 'undefined' && !!extractResetToken());
+  });
   const [adminModalOpen, setAdminModalOpen] = useState<boolean>(() => {
     return typeof window !== 'undefined' && (
       window.location.search.includes('admin') ||
       window.location.search.includes('generator')
     );
   });
+
+  // Listen for reset token in URL dynamically
+  useEffect(() => {
+    const handleCheckReset = () => {
+      const token = extractResetToken();
+      if (token) {
+        setHasResetToken(true);
+        setActivationOpen(true);
+      }
+    };
+    window.addEventListener('popstate', handleCheckReset);
+    window.addEventListener('hashchange', handleCheckReset);
+    return () => {
+      window.removeEventListener('popstate', handleCheckReset);
+      window.removeEventListener('hashchange', handleCheckReset);
+    };
+  }, []);
 
   // Modals & UI states (Only show welcome prompt if user is brand new and not logged in)
   const isNewClient = !db.seen && !storedAcc;
@@ -1143,13 +1166,14 @@ export default function App() {
       />
 
       <ActivationModal
-        isOpen={activationOpen || !isActivated}
-        isOverlay={!isActivated}
+        isOpen={activationOpen || !isActivated || hasResetToken}
+        isOverlay={!isActivated || hasResetToken}
         lang={state.lang}
         accountName={accountName}
         onActivated={(accName, pass) => {
           setIsActivated(true);
           setActivationOpen(false);
+          setHasResetToken(false);
           if (accName) {
             setAccountName(accName);
             saveStoredUserAccount(accName, pass || 'travly123');
