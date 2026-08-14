@@ -36,7 +36,7 @@ import { TooltipBox } from './components/TooltipBox';
 import { SupabaseModal } from './components/SupabaseModal';
 import { ActivationModal } from './components/ActivationModal';
 import { AdminGeneratorModal } from './components/AdminGeneratorModal';
-import { isAppActivated, setAppActivated, clearAppActivated, markAccountDeletedInSupabase, verifyLoginAccount } from './utils/license';
+import { isAppActivated, setAppActivated, clearAppActivated, markAccountDeletedInSupabase } from './utils/license';
 import {
   getSupabaseCredentials,
   getSupabaseClient,
@@ -362,56 +362,38 @@ export default function App() {
     const password = pass.trim();
     let authData: any = null;
     let loggedUser = identity;
-    let loginSuccess = false;
 
     try {
       if (identity.includes('@')) {
         authData = await pb.collection('users').authWithPassword(identity, password);
-        console.log('Login effettuato con successo via email diretta:', identity);
+        console.log('Login effettuato con successo via email diretta su PocketBase:', identity);
       } else {
         try {
-          authData = await pb.collection('users').authWithPassword(identity, password);
-          console.log('Login effettuato con successo via username diretto:', identity);
-        } catch (err) {
-          console.log('Autenticazione diretta per username fallita, tentativo recupero email record per:', identity);
-          let userRecord: any = null;
-          try {
-            userRecord = await pb.collection('users').getFirstListItem(
-              `username = "${identity}" || name = "${identity}"`
-            );
-          } catch (findErr) {
-            console.log('Ricerca record per username/name fallita o record non trovato:', findErr);
-          }
-
+          const userRecord = await pb.collection('users').getFirstListItem(
+            `username = "${identity}" || name = "${identity}"`
+          );
           if (userRecord && userRecord.email) {
             authData = await pb.collection('users').authWithPassword(userRecord.email, password);
-            console.log('Login effettuato con successo via email recuperata dal record:', userRecord.email);
+            console.log('Login effettuato con successo via email recuperata da PocketBase record:', userRecord.email);
           } else {
-            throw err;
+            authData = await pb.collection('users').authWithPassword(identity, password);
+            console.log('Login effettuato con successo via username diretto su PocketBase:', identity);
           }
+        } catch (findErr) {
+          console.log('Ricerca record per username/name fallita, tentativo auth diretta username:', findErr);
+          authData = await pb.collection('users').authWithPassword(identity, password);
+          console.log('Login effettuato con successo via username diretto su PocketBase:', identity);
         }
       }
 
       if (authData && authData.record) {
         loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
         setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
-        loginSuccess = true;
+      } else {
+        throw new Error('Nessun record PocketBase');
       }
-    } catch (pbErr) {
-      console.warn('PocketBase auth warning:', pbErr);
-      // Fallback to license verification
-      try {
-        const verifyRes = await verifyLoginAccount(identity, password);
-        if (verifyRes.success) {
-          setAppActivated(verifyRes.code || 'TRV-ACCOUNT');
-          loginSuccess = true;
-        }
-      } catch (licErr) {
-        console.warn('License verification fallback error:', licErr);
-      }
-    }
-
-    if (!loginSuccess) {
+    } catch (pbErr: any) {
+      console.error('PocketBase auth error:', pbErr);
       throw new Error(
         state.lang === 'it'
           ? 'Nome account/Email o Password non validi.'
@@ -424,25 +406,6 @@ export default function App() {
     setIsActivated(true);
 
     setWelcomeOpen(false); // Hide example modal
-
-    setSyncStatus('syncing');
-    try {
-      const remoteDb = await loadFromSupabase(acc);
-      if (remoteDb && Array.isArray(remoteDb.trips) && remoteDb.trips.length > 0) {
-        setDb(remoteDb);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteDb));
-        setLastSyncedAt(new Date());
-        setSyncStatus('saved');
-      } else {
-        // Upload current database to this new account key
-        await saveToSupabase(db, acc);
-        setLastSyncedAt(new Date());
-        setSyncStatus('saved');
-      }
-    } catch (err: any) {
-      setSyncStatus('error');
-      // non-blocking for remote sync
-    }
   };
 
   const handleLogoutAccount = () => {

@@ -19,7 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Language } from '../types';
-import { verifyAndActivateCode, verifyLoginAccount, setAppActivated } from '../utils/license';
+import { verifyAndActivateCode, setAppActivated } from '../utils/license';
 import { saveStoredUserAccount } from '../utils/supabase';
 import { pb, extractResetToken } from '../lib/pocketbase';
 
@@ -231,29 +231,26 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
 
       try {
         if (identity.includes('@')) {
+          // 3. Email diretta su PocketBase
           authData = await pb.collection('users').authWithPassword(identity, password);
-          console.log('Login effettuato con successo via email diretta:', identity);
+          console.log('Login effettuato con successo via email diretta su PocketBase:', identity);
         } else {
+          // 2. Nome Utente (senza '@'): cerca il record direttamente su PocketBase
           try {
-            authData = await pb.collection('users').authWithPassword(identity, password);
-            console.log('Login effettuato con successo via username diretto:', identity);
-          } catch (err) {
-            console.log('Autenticazione diretta per username fallita, tentativo recupero email record per:', identity);
-            let userRecord: any = null;
-            try {
-              userRecord = await pb.collection('users').getFirstListItem(
-                `username = "${identity}" || name = "${identity}"`
-              );
-            } catch (findErr) {
-              console.log('Ricerca record per username/name fallita o record non trovato:', findErr);
-            }
-
+            const userRecord = await pb.collection('users').getFirstListItem(
+              `username = "${identity}" || name = "${identity}"`
+            );
             if (userRecord && userRecord.email) {
               authData = await pb.collection('users').authWithPassword(userRecord.email, password);
-              console.log('Login effettuato con successo via email recuperata dal record:', userRecord.email);
+              console.log('Login effettuato con successo via email recuperata da record PocketBase:', userRecord.email);
             } else {
-              throw err;
+              authData = await pb.collection('users').authWithPassword(identity, password);
+              console.log('Login effettuato con successo via username diretto su PocketBase:', identity);
             }
+          } catch (findErr) {
+            console.log('Ricerca record per username/name fallita, tentativo auth diretta username:', findErr);
+            authData = await pb.collection('users').authWithPassword(identity, password);
+            console.log('Login effettuato con successo via username diretto su PocketBase:', identity);
           }
         }
 
@@ -274,30 +271,11 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
             onActivated(loggedUser, password);
           }, 500);
           return;
+        } else {
+          throw new Error('Nessun record PocketBase');
         }
       } catch (authError: any) {
         console.error('PocketBase auth error:', authError);
-
-        // Fallback to local / supabase license verification if applicable
-        try {
-          const licResult = await verifyLoginAccount(identity, password);
-          if (licResult.success) {
-            setAppActivated(licResult.code || 'TRV-ACCOUNT');
-            saveStoredUserAccount(identity, password);
-            setStatus({
-              success: true,
-              message: licResult.message || (isIt ? 'Accesso eseguito con successo!' : 'Login successful!'),
-            });
-            setTimeout(() => {
-              setLoading(false);
-              onActivated(identity, password);
-            }, 500);
-            return;
-          }
-        } catch (licErr) {
-          console.warn('License fallback error:', licErr);
-        }
-
         setLoading(false);
         setStatus({
           success: false,

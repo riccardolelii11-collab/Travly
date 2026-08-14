@@ -195,7 +195,7 @@ export async function loadFromSupabase(accountKey: string = 'main'): Promise<App
       .from('travly_db')
       .select('data')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (
