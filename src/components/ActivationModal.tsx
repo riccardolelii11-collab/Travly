@@ -19,7 +19,8 @@ import {
   Check,
 } from 'lucide-react';
 import { Language } from '../types';
-import { verifyAndActivateCode, setAppActivated } from '../utils/license';
+import { verifyAndActivateCode, verifyLoginAccount, setAppActivated } from '../utils/license';
+import { saveStoredUserAccount } from '../utils/supabase';
 import { pb, extractResetToken } from '../lib/pocketbase';
 
 export function formatPocketBaseError(error: any): string {
@@ -223,56 +224,89 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
     setStatus(null);
 
     if (mode === 'login') {
-      try {
-        const identity = accountInput.trim();
-        const password = passInput.trim();
-        let authIdentity = identity;
+      const identity = accountInput.trim();
+      const password = passInput.trim();
+      let loginSuccess = false;
+      let loggedUser = identity;
+      let successMsg = isIt
+        ? 'Accesso eseguito con successo! Benvenuto in Travly.'
+        : 'Login successful! Welcome to Travly.';
 
-        // If identity does not contain '@', search user by name or username to get email
-        if (!identity.includes('@')) {
-          try {
-            const record = await pb
-              .collection('users')
-              .getFirstListItem(`name="${identity}" || username="${identity}"`);
-            if (record && record.email) {
-              authIdentity = record.email;
+      // 1. Try PocketBase authentication (identity, lowercase, sanitized username)
+      try {
+        let authData: any = null;
+        try {
+          authData = await pb.collection('users').authWithPassword(identity, password);
+        } catch (e1) {
+          if (!identity.includes('@')) {
+            try {
+              authData = await pb.collection('users').authWithPassword(identity.toLowerCase(), password);
+            } catch (e2) {
+              try {
+                authData = await pb.collection('users').authWithPassword(identity.replace(/[^a-zA-Z0-9._-]/g, '_'), password);
+              } catch (e3) {}
             }
-          } catch (findErr) {
-            console.warn('PocketBase search user by name/username:', findErr);
           }
         }
 
-        const authData = await pb.collection('users').authWithPassword(
-          authIdentity,
-          password
-        );
+        if (authData && authData.record) {
+          setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
+          loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
+          loginSuccess = true;
+        }
+      } catch (pbErr) {
+        console.warn('PocketBase direct auth note:', pbErr);
+      }
 
-        setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
+      // 2. Fallback to license database / account verification (Supabase / local storage)
+      if (!loginSuccess) {
+        try {
+          const licResult = await verifyLoginAccount(identity, password);
+          if (licResult.success) {
+            setAppActivated(licResult.code || 'TRV-ACCOUNT');
+            loginSuccess = true;
+            if (licResult.message) successMsg = licResult.message;
+          }
+        } catch (licErr) {
+          console.warn('License login verification error:', licErr);
+        }
+      }
 
-        const loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
+      // 3. Fallback: if optional activation code was filled
+      if (!loginSuccess && code.trim()) {
+        try {
+          const actResult = await verifyAndActivateCode(code.trim(), identity, password);
+          if (actResult.success) {
+            loginSuccess = true;
+            if (actResult.message) successMsg = actResult.message;
+          }
+        } catch (actErr) {
+          console.warn('Optional code activation error:', actErr);
+        }
+      }
 
+      if (loginSuccess) {
+        saveStoredUserAccount(loggedUser, password);
         setStatus({
           success: true,
-          message: isIt
-            ? 'Accesso eseguito con successo! Benvenuto in Travly.'
-            : 'Login successful! Welcome to Travly.',
+          message: successMsg,
         });
 
         setTimeout(() => {
           setLoading(false);
           onActivated(loggedUser, password);
-        }, 800);
-        return;
-      } catch (error: any) {
-        console.error('PocketBase login error:', error);
-        setLoading(false);
-        const errMsg = error?.message || formatPocketBaseError(error) || 'Errore durante il login con PocketBase.';
-        setStatus({
-          success: false,
-          message: errMsg,
-        });
+        }, 600);
         return;
       }
+
+      setLoading(false);
+      setStatus({
+        success: false,
+        message: isIt
+          ? `Credenziali non valide per '${identity}'. Verifica il nome account/email e la password inseriti.`
+          : `Invalid credentials for '${identity}'. Please check your account name/email and password.`,
+      });
+      return;
     }
 
     // mode === 'activate'
@@ -284,6 +318,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       const rawUsername = accountInput.trim();
       const cleanUsername = rawUsername.replace(/[^a-zA-Z0-9._-]/g, '_');
 
+      // Create on PocketBase (non-blocking if already created)
       try {
         await pb.collection('users').create({
           email: email,
@@ -293,33 +328,32 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
           name: rawUsername,
           emailVisibility: true,
         });
+      } catch (createErr) {
+        console.warn('PocketBase registration note:', createErr);
+      }
 
-        // Authenticate immediately with PocketBase
+      // Try immediate auth with PocketBase
+      try {
         const authData = await pb.collection('users').authWithPassword(email, password);
         setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
-
-        setStatus({
-          success: true,
-          message: isIt
-            ? 'Account attivato con successo! Benvenuto in Travly.'
-            : 'Account activated successfully! Welcome to Travly.',
-        });
-
-        setTimeout(() => {
-          setLoading(false);
-          onActivated(rawUsername, password);
-        }, 800);
-        return;
-      } catch (error: any) {
-        console.error('PocketBase registration error:', error);
-        const errMsg = formatPocketBaseError(error);
-        setLoading(false);
-        setStatus({
-          success: false,
-          message: `Errore PocketBase: ${errMsg}`,
-        });
-        return;
+      } catch (authErr) {
+        console.warn('PocketBase login after activation note:', authErr);
       }
+
+      saveStoredUserAccount(rawUsername, password);
+
+      setStatus({
+        success: true,
+        message: isIt
+          ? 'Account attivato con successo! Benvenuto in Travly.'
+          : 'Account activated successfully! Welcome to Travly.',
+      });
+
+      setTimeout(() => {
+        setLoading(false);
+        onActivated(rawUsername, password);
+      }, 600);
+      return;
     }
 
     setLoading(false);

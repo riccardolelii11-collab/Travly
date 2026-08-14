@@ -36,7 +36,7 @@ import { TooltipBox } from './components/TooltipBox';
 import { SupabaseModal } from './components/SupabaseModal';
 import { ActivationModal } from './components/ActivationModal';
 import { AdminGeneratorModal } from './components/AdminGeneratorModal';
-import { isAppActivated, setAppActivated, clearAppActivated, markAccountDeletedInSupabase } from './utils/license';
+import { isAppActivated, setAppActivated, clearAppActivated, markAccountDeletedInSupabase, verifyLoginAccount } from './utils/license';
 import {
   getSupabaseCredentials,
   getSupabaseClient,
@@ -358,34 +358,53 @@ export default function App() {
   };
 
   const handleLoginAccount = async (acc: string, pass: string) => {
-    try {
-      const identity = acc.trim();
-      const password = pass.trim();
-      let authIdentity = identity;
+    const identity = acc.trim();
+    const password = pass.trim();
+    let loginSuccess = false;
+    let loggedUser = identity;
 
-      if (!identity.includes('@')) {
-        try {
-          const record = await pb
-            .collection('users')
-            .getFirstListItem(`name="${identity}" || username="${identity}"`);
-          if (record && record.email) {
-            authIdentity = record.email;
+    // 1. Try PocketBase direct or variation
+    try {
+      let authData: any = null;
+      try {
+        authData = await pb.collection('users').authWithPassword(identity, password);
+      } catch (e1) {
+        if (!identity.includes('@')) {
+          try {
+            authData = await pb.collection('users').authWithPassword(identity.toLowerCase(), password);
+          } catch (e2) {
+            try {
+              authData = await pb.collection('users').authWithPassword(identity.replace(/[^a-zA-Z0-9._-]/g, '_'), password);
+            } catch (e3) {}
           }
-        } catch (findErr) {
-          console.warn('PocketBase search user by name/username:', findErr);
         }
       }
 
-      const authData = await pb.collection('users').authWithPassword(authIdentity, password);
-      const loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
-      saveStoredUserAccount(loggedUser, pass);
-      setAccountName(loggedUser);
-      setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
-      setIsActivated(true);
-    } catch (pbErr: any) {
+      if (authData && authData.record) {
+        loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
+        setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
+        loginSuccess = true;
+      }
+    } catch (pbErr) {
       console.warn('PocketBase auth warning:', pbErr);
-      throw new Error(pbErr?.message || 'Login fallito. Verifica email/username e password.');
     }
+
+    // 2. Fallback to license account verification
+    if (!loginSuccess) {
+      const verifyRes = await verifyLoginAccount(identity, password);
+      if (verifyRes.success) {
+        setAppActivated(verifyRes.code || 'TRV-ACCOUNT');
+        loginSuccess = true;
+      }
+    }
+
+    if (!loginSuccess) {
+      throw new Error(`Credenziali non valide per '${identity}'. Verifica account e password.`);
+    }
+
+    saveStoredUserAccount(loggedUser, password);
+    setAccountName(loggedUser);
+    setIsActivated(true);
 
     setWelcomeOpen(false); // Hide example modal
 
