@@ -294,11 +294,6 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
           emailVisibility: true,
         });
 
-        // Request verification in background if configured, without blocking
-        try {
-          await pb.collection('users').requestVerification(email);
-        } catch {}
-
         // Authenticate immediately with PocketBase
         const authData = await pb.collection('users').authWithPassword(email, password);
         setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
