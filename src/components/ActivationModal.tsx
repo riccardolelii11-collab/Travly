@@ -21,7 +21,7 @@ import {
 import { Language } from '../types';
 import { verifyAndActivateCode, setAppActivated } from '../utils/license';
 import { saveStoredUserAccount } from '../utils/supabase';
-import { pb, extractResetToken } from '../lib/pocketbase';
+import { pb, extractResetToken, TRAVLY_SUPPORT_EMAIL, TRAVLY_SUPPORT_SENDER_NAME } from '../lib/pocketbase';
 
 export function formatPocketBaseError(error: any): string {
   if (!error) return 'Errore sconosciuto PocketBase';
@@ -537,6 +537,25 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                 </div>
               )}
 
+              <div className="p-3 bg-[var(--soft)] border border-[var(--line)] rounded-xl text-xs text-[var(--sub)] leading-relaxed space-y-1.5">
+                <p className="font-semibold text-[var(--ink)] flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-[#12B5A5]" />
+                  <span>{isIt ? 'Informazioni Mittente:' : 'Sender Information:'}</span>
+                </p>
+                <p>
+                  {isIt
+                    ? `L'email verrà inviata da `
+                    : `The email will be sent by `}
+                  <strong className="text-[var(--ink)]">{TRAVLY_SUPPORT_SENDER_NAME}</strong>{' '}
+                  (<a href={`mailto:${TRAVLY_SUPPORT_EMAIL}?subject=Supporto%20Reset%20Password`} className="text-[#12B5A5] hover:underline font-mono">{TRAVLY_SUPPORT_EMAIL}</a>).
+                </p>
+                <p className="text-[11px] text-[var(--sub)]/80">
+                  {isIt
+                    ? 'Se non vedi la mail entro 2 minuti, controlla anche la cartella Spam o contatta il supporto.'
+                    : 'If you do not see the email within 2 minutes, check your Spam folder or contact support.'}
+                </p>
+              </div>
+
               <button
                 type="submit"
                 disabled={resetLoading || !resetEmail.trim()}
@@ -555,17 +574,26 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                 )}
               </button>
 
-              <div className="text-center pt-2">
+              <div className="text-center pt-2 space-y-2">
                 <button
                   type="button"
                   onClick={() => {
                     setViewMode('form');
                     setMode('login');
                   }}
-                  className="text-xs font-bold text-[var(--sub)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+                  className="text-xs font-bold text-[var(--sub)] hover:text-[var(--ink)] transition-colors cursor-pointer block mx-auto"
                 >
                   {isIt ? 'Torna al Form di Login' : 'Back to Login'}
                 </button>
+                <div className="text-[11px] text-[var(--sub)]">
+                  {isIt ? 'Serve aiuto? Scrivi a ' : 'Need help? Write to '}
+                  <a
+                    href={`mailto:${TRAVLY_SUPPORT_EMAIL}?subject=Assistenza%20Account%20Travly`}
+                    className="text-[#12B5A5] hover:underline font-semibold"
+                  >
+                    {TRAVLY_SUPPORT_EMAIL}
+                  </a>
+                </div>
               </div>
             </form>
           </div>
@@ -977,14 +1005,20 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
                 </button>
               </form>
 
-              {/* Security Footer */}
-              <div className="pt-2 border-t border-[var(--hair)] flex items-center justify-between text-[11px] text-[var(--sub)] font-medium">
+              {/* Security & Support Footer */}
+              <div className="pt-2.5 border-t border-[var(--hair)] flex flex-col sm:flex-row items-center justify-between gap-1.5 text-[11px] text-[var(--sub)] font-medium">
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#12B5A5]" />
                   {isIt ? 'Licenza personale e protetta' : 'Personal & secure license'}
                 </span>
-                <span className="text-[10px] text-[var(--sub)]/70">
-                  Travly v2.0
+                <span className="flex items-center gap-1">
+                  <span>{isIt ? 'Supporto:' : 'Support:'}</span>
+                  <a
+                    href={`mailto:${TRAVLY_SUPPORT_EMAIL}?subject=Supporto%20Travly`}
+                    className="text-[#12B5A5] hover:underline font-semibold"
+                  >
+                    {TRAVLY_SUPPORT_EMAIL}
+                  </a>
                 </span>
               </div>
             </div>

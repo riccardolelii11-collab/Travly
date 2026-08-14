@@ -8,6 +8,23 @@ export const pocketbaseUrl = envUrl || 'https://pocketbase.tagliaetrasforma.it';
 export const pb = new PocketBase(pocketbaseUrl);
 
 /**
+ * Official Travly Support & System Email Settings
+ */
+export const TRAVLY_SUPPORT_EMAIL = 'support.travly@gmail.com';
+export const TRAVLY_SUPPORT_SENDER_NAME = 'Travly Support';
+
+/**
+ * Default Email Templates & Metadata for Travly
+ */
+export const TRAVLY_EMAIL_CONFIG = {
+  senderEmail: TRAVLY_SUPPORT_EMAIL,
+  senderName: TRAVLY_SUPPORT_SENDER_NAME,
+  supportMailto: `mailto:${TRAVLY_SUPPORT_EMAIL}?subject=Supporto%20Travly`,
+  passwordResetSubject: 'Ripristino Password - Travly',
+  verificationSubject: 'Verifica Account - Travly',
+};
+
+/**
  * Extracts password reset token from URL search query, hash, or path
  */
 export function extractResetToken(): string | null {

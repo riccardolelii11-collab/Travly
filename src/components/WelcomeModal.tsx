@@ -407,6 +407,17 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
             )}
           </div>
         </div>
+
+        {/* Support note */}
+        <div className="text-center pt-1 text-[11px] text-[var(--sub)]">
+          {lang === 'it' ? 'Hai domande o hai bisogno di aiuto? ' : 'Questions or need help? '}
+          <a
+            href="mailto:support.travly@gmail.com?subject=Supporto%20Travly"
+            className="text-[#12B5A5] hover:underline font-semibold"
+          >
+            support.travly@gmail.com
+          </a>
+        </div>
       </div>
     </div>
   );

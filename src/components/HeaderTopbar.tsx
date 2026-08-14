@@ -340,6 +340,15 @@ export const HeaderTopbar: React.FC<HeaderTopbarProps> = ({
                 <span>{t('help', lang)}</span>
               </button>
 
+              <a
+                href="mailto:support.travly@gmail.com?subject=Assistenza%20Travly"
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-[10px] w-full text-left border-none bg-transparent text-[#12B5A5] rounded-[9px] p-[10px_11px] text-[13.5px] font-semibold hover:bg-[var(--soft)] cursor-pointer no-underline"
+              >
+                <span className="w-[18px] text-center opacity-90">✉</span>
+                <span>{lang === 'it' ? 'Supporto & Assistenza' : 'Support & Help'}</span>
+              </a>
+
               <button
                 onClick={() => {
                   setMoreOpen(false);
