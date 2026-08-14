@@ -226,25 +226,33 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
     if (mode === 'login') {
       const identity = accountInput.trim();
       const password = passInput.trim();
-      let loginSuccess = false;
+      let authData: any = null;
       let loggedUser = identity;
-      let successMsg = isIt
-        ? 'Accesso eseguito con successo! Benvenuto in Travly.'
-        : 'Login successful! Welcome to Travly.';
 
-      // 1. Try PocketBase authentication (identity, lowercase, sanitized username)
       try {
-        let authData: any = null;
-        try {
+        if (identity.includes('@')) {
           authData = await pb.collection('users').authWithPassword(identity, password);
-        } catch (e1) {
-          if (!identity.includes('@')) {
+          console.log('Login effettuato con successo via email diretta:', identity);
+        } else {
+          try {
+            authData = await pb.collection('users').authWithPassword(identity, password);
+            console.log('Login effettuato con successo via username diretto:', identity);
+          } catch (err) {
+            console.log('Autenticazione diretta per username fallita, tentativo recupero email record per:', identity);
+            let userRecord: any = null;
             try {
-              authData = await pb.collection('users').authWithPassword(identity.toLowerCase(), password);
-            } catch (e2) {
-              try {
-                authData = await pb.collection('users').authWithPassword(identity.replace(/[^a-zA-Z0-9._-]/g, '_'), password);
-              } catch (e3) {}
+              userRecord = await pb.collection('users').getFirstListItem(
+                `username = "${identity}" || name = "${identity}"`
+              );
+            } catch (findErr) {
+              console.log('Ricerca record per username/name fallita o record non trovato:', findErr);
+            }
+
+            if (userRecord && userRecord.email) {
+              authData = await pb.collection('users').authWithPassword(userRecord.email, password);
+              console.log('Login effettuato con successo via email recuperata dal record:', userRecord.email);
+            } else {
+              throw err;
             }
           }
         }
@@ -252,61 +260,53 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
         if (authData && authData.record) {
           setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
           loggedUser = authData.record?.name || authData.record?.username || authData.record?.email || identity;
-          loginSuccess = true;
-        }
-      } catch (pbErr) {
-        console.warn('PocketBase direct auth note:', pbErr);
-      }
+          saveStoredUserAccount(loggedUser, password);
 
-      // 2. Fallback to license database / account verification (Supabase / local storage)
-      if (!loginSuccess) {
+          setStatus({
+            success: true,
+            message: isIt
+              ? 'Accesso eseguito con successo! Benvenuto in Travly.'
+              : 'Login successful! Welcome to Travly.',
+          });
+
+          setTimeout(() => {
+            setLoading(false);
+            onActivated(loggedUser, password);
+          }, 500);
+          return;
+        }
+      } catch (authError: any) {
+        console.error('PocketBase auth error:', authError);
+
+        // Fallback to local / supabase license verification if applicable
         try {
           const licResult = await verifyLoginAccount(identity, password);
           if (licResult.success) {
             setAppActivated(licResult.code || 'TRV-ACCOUNT');
-            loginSuccess = true;
-            if (licResult.message) successMsg = licResult.message;
+            saveStoredUserAccount(identity, password);
+            setStatus({
+              success: true,
+              message: licResult.message || (isIt ? 'Accesso eseguito con successo!' : 'Login successful!'),
+            });
+            setTimeout(() => {
+              setLoading(false);
+              onActivated(identity, password);
+            }, 500);
+            return;
           }
         } catch (licErr) {
-          console.warn('License login verification error:', licErr);
+          console.warn('License fallback error:', licErr);
         }
-      }
 
-      // 3. Fallback: if optional activation code was filled
-      if (!loginSuccess && code.trim()) {
-        try {
-          const actResult = await verifyAndActivateCode(code.trim(), identity, password);
-          if (actResult.success) {
-            loginSuccess = true;
-            if (actResult.message) successMsg = actResult.message;
-          }
-        } catch (actErr) {
-          console.warn('Optional code activation error:', actErr);
-        }
-      }
-
-      if (loginSuccess) {
-        saveStoredUserAccount(loggedUser, password);
+        setLoading(false);
         setStatus({
-          success: true,
-          message: successMsg,
+          success: false,
+          message: isIt
+            ? 'Nome account/Email o Password non validi.'
+            : 'Invalid Account Name/Email or Password.',
         });
-
-        setTimeout(() => {
-          setLoading(false);
-          onActivated(loggedUser, password);
-        }, 600);
         return;
       }
-
-      setLoading(false);
-      setStatus({
-        success: false,
-        message: isIt
-          ? `Credenziali non valide per '${identity}'. Verifica il nome account/email e la password inseriti.`
-          : `Invalid credentials for '${identity}'. Please check your account name/email and password.`,
-      });
-      return;
     }
 
     // mode === 'activate'

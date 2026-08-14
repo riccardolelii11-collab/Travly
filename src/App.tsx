@@ -360,22 +360,34 @@ export default function App() {
   const handleLoginAccount = async (acc: string, pass: string) => {
     const identity = acc.trim();
     const password = pass.trim();
-    let loginSuccess = false;
+    let authData: any = null;
     let loggedUser = identity;
+    let loginSuccess = false;
 
-    // 1. Try PocketBase direct or variation
     try {
-      let authData: any = null;
-      try {
+      if (identity.includes('@')) {
         authData = await pb.collection('users').authWithPassword(identity, password);
-      } catch (e1) {
-        if (!identity.includes('@')) {
+        console.log('Login effettuato con successo via email diretta:', identity);
+      } else {
+        try {
+          authData = await pb.collection('users').authWithPassword(identity, password);
+          console.log('Login effettuato con successo via username diretto:', identity);
+        } catch (err) {
+          console.log('Autenticazione diretta per username fallita, tentativo recupero email record per:', identity);
+          let userRecord: any = null;
           try {
-            authData = await pb.collection('users').authWithPassword(identity.toLowerCase(), password);
-          } catch (e2) {
-            try {
-              authData = await pb.collection('users').authWithPassword(identity.replace(/[^a-zA-Z0-9._-]/g, '_'), password);
-            } catch (e3) {}
+            userRecord = await pb.collection('users').getFirstListItem(
+              `username = "${identity}" || name = "${identity}"`
+            );
+          } catch (findErr) {
+            console.log('Ricerca record per username/name fallita o record non trovato:', findErr);
+          }
+
+          if (userRecord && userRecord.email) {
+            authData = await pb.collection('users').authWithPassword(userRecord.email, password);
+            console.log('Login effettuato con successo via email recuperata dal record:', userRecord.email);
+          } else {
+            throw err;
           }
         }
       }
@@ -387,19 +399,24 @@ export default function App() {
       }
     } catch (pbErr) {
       console.warn('PocketBase auth warning:', pbErr);
-    }
-
-    // 2. Fallback to license account verification
-    if (!loginSuccess) {
-      const verifyRes = await verifyLoginAccount(identity, password);
-      if (verifyRes.success) {
-        setAppActivated(verifyRes.code || 'TRV-ACCOUNT');
-        loginSuccess = true;
+      // Fallback to license verification
+      try {
+        const verifyRes = await verifyLoginAccount(identity, password);
+        if (verifyRes.success) {
+          setAppActivated(verifyRes.code || 'TRV-ACCOUNT');
+          loginSuccess = true;
+        }
+      } catch (licErr) {
+        console.warn('License verification fallback error:', licErr);
       }
     }
 
     if (!loginSuccess) {
-      throw new Error(`Credenziali non valide per '${identity}'. Verifica account e password.`);
+      throw new Error(
+        state.lang === 'it'
+          ? 'Nome account/Email o Password non validi.'
+          : 'Invalid Account Name/Email or Password.'
+      );
     }
 
     saveStoredUserAccount(loggedUser, password);
