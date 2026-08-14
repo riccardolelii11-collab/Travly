@@ -77,7 +77,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   accountName = '',
   isOverlay = true,
 }) => {
-  const [viewMode, setViewMode] = useState<'form' | 'verification_sent' | 'forgot_password' | 'reset_password'>('form');
+  const [viewMode, setViewMode] = useState<'form' | 'forgot_password' | 'reset_password'>('form');
   const [mode, setMode] = useState<'activate' | 'login'>('activate');
   const [code, setCode] = useState('');
   const [accountInput, setAccountInput] = useState(accountName);
@@ -88,11 +88,6 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ success?: boolean; message?: string } | null>(null);
-
-  // States for verification sent screen
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendStatus, setResendStatus] = useState<string | null>(null);
 
   // States for forgot password screen
   const [resetEmail, setResetEmail] = useState('');
@@ -299,18 +294,30 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
           emailVisibility: true,
         });
 
-        await pb.collection('users').requestVerification(email);
+        // Request verification in background if configured, without blocking
+        try {
+          await pb.collection('users').requestVerification(email);
+        } catch {}
 
-        // Show verification sent screen
-        setVerificationEmail(email);
-        setViewMode('verification_sent');
-        setLoading(false);
-        onActivated(rawUsername, password);
+        // Authenticate immediately with PocketBase
+        const authData = await pb.collection('users').authWithPassword(email, password);
+        setAppActivated(authData.record?.id || 'TRV-POCKETBASE');
+
+        setStatus({
+          success: true,
+          message: isIt
+            ? 'Account attivato con successo! Benvenuto in Travly.'
+            : 'Account activated successfully! Welcome to Travly.',
+        });
+
+        setTimeout(() => {
+          setLoading(false);
+          onActivated(rawUsername, password);
+        }, 800);
         return;
       } catch (error: any) {
         console.error('PocketBase registration error:', error);
         const errMsg = formatPocketBaseError(error);
-        alert(errMsg);
         setLoading(false);
         setStatus({
           success: false,
@@ -363,27 +370,6 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       });
     } finally {
       setResetLoading(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    if (!verificationEmail) return;
-    setResendLoading(true);
-    setResendStatus(null);
-    try {
-      await pb.collection('users').requestVerification(verificationEmail);
-      setResendStatus(
-        isIt
-          ? 'Nuova email di verifica inviata con successo!'
-          : 'New verification email sent successfully!'
-      );
-    } catch (error: any) {
-      console.error('Resend verification error:', error);
-      const errMsg = formatPocketBaseError(error);
-      alert(errMsg);
-      setResendStatus(`Errore PocketBase: ${errMsg}`);
-    } finally {
-      setResendLoading(false);
     }
   };
 
@@ -485,85 +471,6 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       }`}
     >
       <div className="bg-[var(--card)] border border-[var(--line)] w-full max-w-lg rounded-[22px] shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
-        {/* VIEW MODE: Verification Sent Waiting Screen */}
-        {viewMode === 'verification_sent' && (
-          <div className="p-6 sm:p-8 text-center space-y-5">
-            <div className="w-16 h-16 bg-[#12B5A5]/20 border border-[#12B5A5]/40 rounded-2xl mx-auto grid place-items-center text-[#12B5A5] shadow-lg">
-              <Mail className="w-8 h-8" />
-            </div>
-            <div>
-              <h2 className="text-xl font-extrabold text-[var(--ink)]">
-                {isIt ? 'Controlla la tua Email' : 'Check Your Email'}
-              </h2>
-              <p className="text-xs text-[var(--sub)] mt-2 leading-relaxed">
-                {isIt
-                  ? 'Abbiamo inviato un\'email di verifica all\'indirizzo:'
-                  : 'We sent a verification email to:'}
-              </p>
-              <div className="mt-2 inline-block px-3 py-1.5 bg-[#12B5A5]/10 border border-[#12B5A5]/30 rounded-lg font-mono text-xs font-bold text-[#12B5A5]">
-                {verificationEmail}
-              </div>
-            </div>
-
-            <div className="p-4 bg-[var(--soft)] border border-[var(--line)] rounded-xl text-xs text-[var(--sub)] text-left leading-relaxed space-y-2">
-              <p className="font-semibold text-[var(--ink)]">
-                {isIt ? '📌 Prossimi Passi:' : '📌 Next Steps:'}
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-[var(--sub)]">
-                <li>
-                  {isIt
-                    ? 'Apri la tua casella di posta e trova la mail da PocketBase.'
-                    : 'Open your inbox and find the email from PocketBase.'}
-                </li>
-                <li>
-                  {isIt
-                    ? 'Controlla anche le cartelle Spam o Promozioni.'
-                    : 'Check your Spam or Promotions folder if not found.'}
-                </li>
-                <li>
-                  {isIt
-                    ? 'Clicca sul link di conferma per verificare il tuo account.'
-                    : 'Click the verification link to confirm your account.'}
-                </li>
-              </ul>
-            </div>
-
-            {resendStatus && (
-              <div className="p-3 bg-[#12B5A5]/10 border border-[#12B5A5]/30 rounded-lg text-xs font-semibold text-[#12B5A5]">
-                {resendStatus}
-              </div>
-            )}
-
-            <div className="space-y-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setViewMode('form');
-                  setMode('login');
-                }}
-                className="w-full py-3.5 px-4 bg-[#12B5A5] hover:bg-[#0EA294] text-white font-extrabold text-sm rounded-[14px] transition-all shadow-lg shadow-[#12B5A5]/25 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>{isIt ? 'Ho Verificato / Torna al Login' : 'I Verified / Go to Login'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleResendVerification}
-                disabled={resendLoading}
-                className="w-full py-2.5 px-4 bg-transparent text-[var(--sub)] hover:text-[var(--ink)] font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                {resendLoading ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Send className="w-3.5 h-3.5" />
-                )}
-                <span>{isIt ? 'Reinvia Email di Verifica' : 'Resend Verification Email'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* VIEW MODE: Forgot Password Screen */}
         {viewMode === 'forgot_password' && (
           <div className="p-6 sm:p-8 space-y-5">
