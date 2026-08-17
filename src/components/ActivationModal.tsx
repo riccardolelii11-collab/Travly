@@ -287,7 +287,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       }
     }
 
-    // mode === 'activate'
+    // mode === 'activate' (Registration)
     const result = await verifyAndActivateCode(code.trim(), accountInput.trim(), passInput.trim());
 
     if (result.success) {
@@ -296,7 +296,7 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
       const rawUsername = accountInput.trim();
       const cleanUsername = rawUsername.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-      // Create on PocketBase (non-blocking if already created)
+      // 1. Create record in PocketBase 'users' collection
       try {
         await pb.collection('users').create({
           email: email,
@@ -306,6 +306,15 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
           name: rawUsername,
           emailVisibility: true,
         });
+        console.log('Utente creato con successo su PocketBase:', email);
+
+        // 2. Automatically send email verification
+        try {
+          await pb.collection('users').requestVerification(email);
+          console.log('Email di verifica inviata con successo a:', email);
+        } catch (verifErr) {
+          console.warn('Invio email di verifica:', verifErr);
+        }
       } catch (createErr) {
         console.warn('PocketBase registration note:', createErr);
       }
@@ -320,17 +329,18 @@ export const ActivationModal: React.FC<ActivationModalProps> = ({
 
       saveStoredUserAccount(rawUsername, password);
 
+      // 3. Inform user about successful registration and email verification
       setStatus({
         success: true,
         message: isIt
-          ? 'Account attivato con successo! Benvenuto in Travly.'
-          : 'Account activated successfully! Welcome to Travly.',
+          ? 'Registrazione completata con successo! Controlla la tua casella di posta per verificare la tua email.'
+          : 'Registration completed successfully! Please check your inbox to verify your email.',
       });
 
       setTimeout(() => {
         setLoading(false);
         onActivated(rawUsername, password);
-      }, 600);
+      }, 1000);
       return;
     }
 
